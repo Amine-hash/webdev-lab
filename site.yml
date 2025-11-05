@@ -31,3 +31,11 @@
   roles:
     - role: bastion
       tags: [bastion]
+
+- name: Wait for system initialization
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Pause for 30 seconds
+      ansible.builtin.pause:
+        seconds: 30
