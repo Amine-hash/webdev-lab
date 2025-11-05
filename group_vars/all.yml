@@ -20,6 +20,9 @@ webdev_sg_name: "webdev-lab-sg"
 # CIDR autorisé pour SSH (pour le TP tu peux mettre 0.0.0.0/0)
 ssh_cidr: "0.0.0.0/0"
 
+# CIDR autorisé pour HTTP (accès web)
+web_http_cidr: "0.0.0.0/0"
+
 # Variables DB
 db_name: "Test1"
 db_user: "admin"
