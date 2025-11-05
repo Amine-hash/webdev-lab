@@ -36,3 +36,8 @@ dev_group: "admin"
 infra_state: "present"
 
 project_tag: "webdev-lab"
+
+# si tu utilises ces variables dans ton infra/role, tu peux aussi les définir ici
+bastion_sg_name: "{{ project_tag }}-bastion-sg"
+web_sg_name: "{{ project_tag }}-web-sg"
+db_sg_name: "{{ project_tag }}-db-sg"
