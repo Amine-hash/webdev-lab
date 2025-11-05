@@ -96,7 +96,7 @@
   amazon.aws.ec2_instance:
     name: "webdev-bastion"
     region: "{{ aws_region }}"
-    image_id: "{{ debian_13_ami_id }}"
+    image_id: "{{ debian_ami_id }}"
     instance_type: "{{ instance_type }}"
     key_name: "{{ webdev_key_name }}"
     security_group: "{{ bastion_sg_id }}"
@@ -113,7 +113,7 @@
   amazon.aws.ec2_instance:
     name: "webdev-web"
     region: "{{ aws_region }}"
-    image_id: "{{ debian_13_ami_id }}"
+    image_id: "{{ debian_ami_id }}"
     instance_type: "{{ instance_type }}"
     key_name: "{{ webdev_key_name }}"
     security_group: "{{ web_sg_id }}"
@@ -130,7 +130,7 @@
   amazon.aws.ec2_instance:
     name: "webdev-db"
     region: "{{ aws_region }}"
-    image_id: "{{ debian_13_ami_id }}"
+    image_id: "{{ debian_ami_id }}"
     instance_type: "{{ instance_type }}"
     key_name: "{{ webdev_key_name }}"
     security_group: "{{ db_sg_id }}"

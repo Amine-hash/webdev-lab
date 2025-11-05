@@ -23,6 +23,9 @@ ssh_cidr: "0.0.0.0/0"
 # CIDR autorisé pour HTTP (accès web)
 web_http_cidr: "0.0.0.0/0"
 
+# CIDR autorisé pour phpMyAdmin
+phpmyadmin_cidr: "0.0.0.0/0"
+
 # Variables DB
 db_name: "Test1"
 db_user: "admin"
