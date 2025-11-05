@@ -56,27 +56,28 @@
     description: "DB SG for {{ project_tag }}"
     region: "{{ aws_region }}"
     state: present
+    vpc_id: "{{ vpc_id | default(omit) }}"
     rules:
-      # MySQL depuis Web
       - proto: tcp
         from_port: 3306
         to_port: 3306
         group_id: "{{ web_sg_id }}"
-      # MySQL depuis Bastion (admin)
+        rule_desc: "Allow MySQL from Web servers"
       - proto: tcp
         from_port: 3306
         to_port: 3306
         group_id: "{{ bastion_sg_id }}"
-      # HTTP phpMyAdmin
+        rule_desc: "Allow MySQL from Bastion"
       - proto: tcp
         from_port: 80
         to_port: 80
-        cidr_ip: "{{ phpmyadmin_cidr }}"
-      # SSH depuis Bastion
+        cidr_ip: "{{ phpmyadmin_cidr | default('0.0.0.0/0') }}"
+        rule_desc: "Allow phpMyAdmin access"
       - proto: tcp
         from_port: 22
         to_port: 22
         group_id: "{{ bastion_sg_id }}"
+        rule_desc: "Allow SSH from Bastion"
     rules_egress:
       - proto: -1
         from_port: 0
