@@ -95,11 +95,11 @@
 
 - name: Ensure .ssh directory exists
   ansible.builtin.file:
-    path: "/home/ec2-user/.ssh"
+    path: "{{ ansible_env.HOME }}/.ssh"
     state: directory
     mode: '0700'
-    owner: ec2-user
-    group: ec2-user
+    owner: "{{ ansible_env.USER }}"
+    group: "{{ ansible_env.USER }}"
   when: infra_state == "present"
 
 - name: Create AWS key pair
@@ -114,8 +114,10 @@
 - name: Save private key if newly created
   ansible.builtin.copy:
     content: "{{ key_pair_result.key.private_key }}"
-    dest: "/home/ec2-user/.ssh/{{ webdev_key_name }}.pem"
+    dest: "{{ ansible_env.HOME }}/.ssh/{{ webdev_key_name }}.pem"
     mode: '0600'
+    owner: "{{ ansible_env.USER }}"
+    group: "{{ ansible_env.USER }}"
   when:
     - infra_state == "present"
     - key_pair_result.changed
