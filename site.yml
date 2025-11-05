@@ -6,6 +6,23 @@
     - role: infra
       tags: [infra]
 
+- name: Configure Bastion servers
+  hosts: tag_Role_Bastion
+  become: yes
+  gather_facts: yes
+  roles:
+    - role: bastion
+      tags: [bastion]
+
+- name: Wait for system initialization
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Pause for 30 seconds
+      ansible.builtin.pause:
+        seconds: 30
+      when: groups['tag_Role_Bastion'] is defined
+
 - name: Configure Database servers
   hosts: tag_Role_DB
   become: yes
@@ -24,18 +41,3 @@
     - role: webserver
       tags: [web]
 
-- name: Configure Bastion servers
-  hosts: tag_Role_Bastion
-  become: yes
-  gather_facts: yes
-  roles:
-    - role: bastion
-      tags: [bastion]
-
-- name: Wait for system initialization
-  hosts: localhost
-  gather_facts: no
-  tasks:
-    - name: Pause for 30 seconds
-      ansible.builtin.pause:
-        seconds: 30

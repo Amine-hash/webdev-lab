@@ -178,14 +178,14 @@
   register: db_instance
   when: infra_state == "present"
 
-- name: Wait for SSH to become available
+- name: Wait for SSH on bastion to become available
   ansible.builtin.wait_for:
     host: "{{ item.public_ip_address }}"
     port: 22
     delay: 10
     timeout: 320
     state: started
-  loop: "{{ bastion_instance.instances + web_instance.instances + db_instance.instances }}"
+  loop: "{{ bastion_instance.instances }}"
   when: infra_state == "present"
 
 # === Mode destruction ======================================
