@@ -1,17 +1,36 @@
+# Région AWS
 aws_region: us-east-1
+
+# AMI Debian à utiliser (à adapter selon ton TP)
 debian_ami_id: "ami-0f9c27b471bdcd702"
+
+# Type d'instance pour tout le lab
 instance_type: t3.micro
+
+# Nom de la clé AWS (celle qui correspond à labsuser.pem)
 webdev_key_name: "labsuser"
+
+# Chemin vers la clé privée sur la machine Ansible
 ansible_user: admin
-ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
-bastion_sg_name: "webdev-bastion-sg"
-web_sg_name: "webdev-web-sg"
-db_sg_name: "webdev-db-sg"
+ansible_ssh_private_key_file: "/home/ec2-user/.ssh/labsuser.pem"
+
+# Nom du Security Group pour le lab
+webdev_sg_name: "webdev-lab-sg"
+
+# CIDR autorisé pour SSH (pour le TP tu peux mettre 0.0.0.0/0)
 ssh_cidr: "0.0.0.0/0"
+
+# Variables DB
 db_name: "Test1"
 db_user: "admin"
 db_password: "IG2IUser"
 db_port: 3306
+
+# Container phpMyAdmin
 phpmyadmin_container_name: "myadmin"
+
+# Groupe Linux pour bosser sur /var/www/html
 dev_group: "admin"
+
+# Etat de l'infra (present / absent) pour le rôle infra
 infra_state: "present"
