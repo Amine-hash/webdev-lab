@@ -91,6 +91,35 @@
     db_sg_id: "{{ db_sg.group_id }}"
   when: infra_state == "present"
 
+# ---- Key Pair ----
+
+- name: Ensure .ssh directory exists
+  ansible.builtin.file:
+    path: "/home/ec2-user/.ssh"
+    state: directory
+    mode: '0700'
+    owner: ec2-user
+    group: ec2-user
+  when: infra_state == "present"
+
+- name: Create AWS key pair
+  amazon.aws.ec2_key:
+    name: "{{ webdev_key_name }}"
+    region: "{{ aws_region }}"
+    state: present
+    force: false  # Don't replace if it exists
+  register: key_pair_result
+  when: infra_state == "present"
+
+- name: Save private key if newly created
+  ansible.builtin.copy:
+    content: "{{ key_pair_result.key.private_key }}"
+    dest: "/home/ec2-user/.ssh/{{ webdev_key_name }}.pem"
+    mode: '0600'
+  when:
+    - infra_state == "present"
+    - key_pair_result.changed
+
 # ---- Instances (present) ----
 
 - name: Ensure Bastion instance exists
