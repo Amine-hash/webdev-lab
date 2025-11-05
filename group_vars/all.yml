@@ -34,3 +34,5 @@ dev_group: "admin"
 
 # Etat de l'infra (present / absent) pour le rôle infra
 infra_state: "present"
+
+project_tag: "webdev-lab"
