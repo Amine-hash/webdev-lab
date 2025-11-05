@@ -1,0 +1,34 @@
+---
+- name: Infra AWS Web Dev Lab
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  roles:
+    - role: infra
+      tags: [infra]
+
+- name: Configure Database servers
+  hosts: tag_Role_DB
+  become: yes
+  gather_facts: yes
+  roles:
+    - role: database
+      tags: [db]
+    - role: phpmyadmin
+      tags: [phpmyadmin]
+
+- name: Configure Web servers
+  hosts: tag_Role_Web
+  become: yes
+  gather_facts: yes
+  roles:
+    - role: webserver
+      tags: [web]
+
+- name: Configure Bastion servers
+  hosts: tag_Role_Bastion
+  become: yes
+  gather_facts: yes
+  roles:
+    - role: bastion
+      tags: [bastion]

@@ -1,0 +1,74 @@
+---
+- name: Ensure webdev security group is present
+  amazon.aws.ec2_security_group:
+    name: "{{ webdev_sg_name }}"
+    description: "Web Dev Lab Security Group"
+    region: "{{ aws_region }}"
+    rules:
+      - { proto: tcp, from_port: 22,   to_port: 22,   cidr_ip: "{{ ssh_cidr }}" }
+      - { proto: tcp, from_port: 80,   to_port: 80,   cidr_ip: "0.0.0.0/0" }
+      - { proto: tcp, from_port: 3306, to_port: 3306, cidr_ip: "0.0.0.0/0" }
+    rules_egress:
+      - { proto: -1, from_port: 0, to_port: 0, cidr_ip: "0.0.0.0/0" }
+    state: present
+  register: webdev_sg
+  when: infra_state == "present"
+
+- name: Set SG id fact
+  ansible.builtin.set_fact:
+    webdev_sg_id: "{{ webdev_sg.group_id }}"
+  when: infra_state == "present"
+
+- name: Ensure Bastion instance exists
+  amazon.aws.ec2_instance:
+    name: "webdev-bastion"
+    region: "{{ aws_region }}"
+    image_id: "{{ debian_ami_id }}"
+    instance_type: "{{ instance_type }}"
+    key_name: "{{ webdev_key_name }}"
+    security_group: "{{ webdev_sg_id }}"
+    wait: true
+    exact_count: 1
+    tags: { Project: "webdev-lab", Role: "Bastion" }
+  when: infra_state == "present"
+
+- name: Ensure Web instance exists
+  amazon.aws.ec2_instance:
+    name: "webdev-web"
+    region: "{{ aws_region }}"
+    image_id: "{{ debian_ami_id }}"
+    instance_type: "{{ instance_type }}"
+    key_name: "{{ webdev_key_name }}"
+    security_group: "{{ webdev_sg_id }}"
+    wait: true
+    exact_count: 1
+    tags: { Project: "webdev-lab", Role: "Web" }
+  when: infra_state == "present"
+
+- name: Ensure Database instance exists
+  amazon.aws.ec2_instance:
+    name: "webdev-db"
+    region: "{{ aws_region }}"
+    image_id: "{{ debian_ami_id }}"
+    instance_type: "{{ instance_type }}"
+    key_name: "{{ webdev_key_name }}"
+    security_group: "{{ webdev_sg_id }}"
+    wait: true
+    exact_count: 1
+    tags: { Project: "webdev-lab", Role: "DB" }
+  when: infra_state == "present"
+
+- name: Terminate all webdev-lab instances
+  amazon.aws.ec2_instance:
+    region: "{{ aws_region }}"
+    state: absent
+    wait: true
+    filters: { "tag:Project": "webdev-lab" }
+  when: infra_state == "absent"
+
+- name: Delete webdev security group
+  amazon.aws.ec2_security_group:
+    name: "{{ webdev_sg_name }}"
+    region: "{{ aws_region }}"
+    state: absent
+  when: infra_state == "absent"
