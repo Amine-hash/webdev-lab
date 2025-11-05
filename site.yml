@@ -1,4 +1,3 @@
----
 - name: Infra AWS Web Dev Lab
   hosts: localhost
   connection: local

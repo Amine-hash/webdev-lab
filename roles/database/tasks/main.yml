@@ -1,5 +1,4 @@
----
-- name: Update APT and upgrade system
+- name: Update APT and upgrade system (DB)
   ansible.builtin.apt:
     update_cache: yes
     upgrade: dist
@@ -7,12 +6,65 @@
 
 - name: Install MariaDB and PyMySQL
   ansible.builtin.apt:
-    name: [mariadb-server, python3-pymysql]
+    name:
+      - mariadb-server
+      - python3-pymysql
     state: present
   tags: [db]
 
 - name: Configure MariaDB to listen on all interfaces
   ansible.builtin.lineinfile:
     path: /etc/mysql/mariadb.conf.d/50-server.cnf
-    regexp: ^bind-address\s*=
-    line: bind-address
+    regexp: '^bind-address\s*='
+    line: 'bind-address            = 0.0.0.0'
+    backup: yes
+  notify: restart mariadb
+  tags: [db]
+
+- name: Ensure MariaDB is started and enabled
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: yes
+  tags: [db]
+
+- name: Create application database
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  tags: [db]
+
+- name: Create application DB user with privileges
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL"
+    host: "%"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  tags: [db]
+
+- name: Create Users table if not exists
+  community.mysql.mysql_query:
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_password }}"
+    login_db: "{{ db_name }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS Users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        LastName VARCHAR(50),
+        FirstName VARCHAR(50)
+      );
+  tags: [db]
+
+- name: Insert demo users if table is empty
+  community.mysql.mysql_query:
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_password }}"
+    login_db: "{{ db_name }}"
+    query: |
+      INSERT INTO Users (LastName, FirstName)
+      SELECT 'Doe', 'John'
+      WHERE NOT EXISTS (SELECT 1 FROM Users);
+  tags: [db]

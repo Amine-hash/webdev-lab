@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dump Users</title>
+</head>
+<body>
+<?php
+    $host = "{{ db_host }}";
+    $database = "{{ db_name }}";
+    $user = "{{ db_user }}";
+    $pass = "{{ db_password }}";
+
+    $conn = new mysqli($host, $user, $pass, $database);
+    if ($conn->connect_errno) {
+        printf("Connection to database failed: %s<br>", $conn->connect_error);
+        exit();
+    }
+    echo "Here is the list of Users from the Database $database<br>";
+
+    $sql = "SELECT LastName, FirstName FROM Users";
+    $result = $conn->query($sql);
+    if ($result && $result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            print $row["FirstName"] . " " . $row["LastName"] . "<br>";
+        }
+    } else {
+        echo "No result found!<br>";
+    }
+?>
+</body>
+</html>

@@ -1,0 +1,25 @@
+- name: Install docker.io
+  ansible.builtin.apt:
+    name: docker.io
+    state: present
+    update_cache: yes
+  tags: [phpmyadmin]
+
+- name: Ensure Docker daemon is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: yes
+  tags: [phpmyadmin]
+
+- name: Run phpMyAdmin container
+  community.docker.docker_container:
+    name: "{{ phpmyadmin_container_name }}"
+    image: phpmyadmin
+    restart_policy: unless-stopped
+    env:
+      PMA_ARBITRARY: "1"
+    ports:
+      - "80:80"
+    state: started
+  tags: [phpmyadmin]

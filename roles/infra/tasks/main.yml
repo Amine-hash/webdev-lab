@@ -1,74 +1,177 @@
----
-- name: Ensure webdev security group is present
+- name: Create Bastion security group
   amazon.aws.ec2_security_group:
-    name: "{{ webdev_sg_name }}"
-    description: "Web Dev Lab Security Group"
+    name: "{{ bastion_sg_name }}"
+    description: "Bastion SG for {{ project_tag }}"
     region: "{{ aws_region }}"
-    rules:
-      - { proto: tcp, from_port: 22,   to_port: 22,   cidr_ip: "{{ ssh_cidr }}" }
-      - { proto: tcp, from_port: 80,   to_port: 80,   cidr_ip: "0.0.0.0/0" }
-      - { proto: tcp, from_port: 3306, to_port: 3306, cidr_ip: "0.0.0.0/0" }
-    rules_egress:
-      - { proto: -1, from_port: 0, to_port: 0, cidr_ip: "0.0.0.0/0" }
     state: present
-  register: webdev_sg
+    rules:
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: "{{ ssh_cidr }}"
+    rules_egress:
+      - proto: -1
+        from_port: 0
+        to_port: 0
+        cidr_ip: "0.0.0.0/0"
+  register: bastion_sg
   when: infra_state == "present"
 
-- name: Set SG id fact
+- name: Set bastion_sg_id fact
   ansible.builtin.set_fact:
-    webdev_sg_id: "{{ webdev_sg.group_id }}"
+    bastion_sg_id: "{{ bastion_sg.group_id }}"
   when: infra_state == "present"
+
+- name: Create Web security group
+  amazon.aws.ec2_security_group:
+    name: "{{ web_sg_name }}"
+    description: "Web SG for {{ project_tag }}"
+    region: "{{ aws_region }}"
+    state: present
+    rules:
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: "{{ web_http_cidr }}"
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        group_id: "{{ bastion_sg_id }}"
+    rules_egress:
+      - proto: -1
+        from_port: 0
+        to_port: 0
+        cidr_ip: "0.0.0.0/0"
+  register: web_sg
+  when: infra_state == "present"
+
+- name: Set web_sg_id fact
+  ansible.builtin.set_fact:
+    web_sg_id: "{{ web_sg.group_id }}"
+  when: infra_state == "present"
+
+- name: Create DB security group
+  amazon.aws.ec2_security_group:
+    name: "{{ db_sg_name }}"
+    description: "DB SG for {{ project_tag }}"
+    region: "{{ aws_region }}"
+    state: present
+    rules:
+      # MySQL depuis Web
+      - proto: tcp
+        from_port: 3306
+        to_port: 3306
+        group_id: "{{ web_sg_id }}"
+      # MySQL depuis Bastion (admin)
+      - proto: tcp
+        from_port: 3306
+        to_port: 3306
+        group_id: "{{ bastion_sg_id }}"
+      # HTTP phpMyAdmin
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: "{{ phpmyadmin_cidr }}"
+      # SSH depuis Bastion
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        group_id: "{{ bastion_sg_id }}"
+    rules_egress:
+      - proto: -1
+        from_port: 0
+        to_port: 0
+        cidr_ip: "0.0.0.0/0"
+  register: db_sg
+  when: infra_state == "present"
+
+- name: Set db_sg_id fact
+  ansible.builtin.set_fact:
+    db_sg_id: "{{ db_sg.group_id }}"
+  when: infra_state == "present"
+
+# ---- Instances (present) ----
 
 - name: Ensure Bastion instance exists
   amazon.aws.ec2_instance:
     name: "webdev-bastion"
     region: "{{ aws_region }}"
-    image_id: "{{ debian_ami_id }}"
+    image_id: "{{ debian_13_ami_id }}"
     instance_type: "{{ instance_type }}"
     key_name: "{{ webdev_key_name }}"
-    security_group: "{{ webdev_sg_id }}"
+    security_group: "{{ bastion_sg_id }}"
+    network:
+      assign_public_ip: true
     wait: true
     exact_count: 1
-    tags: { Project: "webdev-lab", Role: "Bastion" }
+    tags:
+      Project: "{{ project_tag }}"
+      Role: "Bastion"
   when: infra_state == "present"
 
 - name: Ensure Web instance exists
   amazon.aws.ec2_instance:
     name: "webdev-web"
     region: "{{ aws_region }}"
-    image_id: "{{ debian_ami_id }}"
+    image_id: "{{ debian_13_ami_id }}"
     instance_type: "{{ instance_type }}"
     key_name: "{{ webdev_key_name }}"
-    security_group: "{{ webdev_sg_id }}"
+    security_group: "{{ web_sg_id }}"
+    network:
+      assign_public_ip: true
     wait: true
     exact_count: 1
-    tags: { Project: "webdev-lab", Role: "Web" }
+    tags:
+      Project: "{{ project_tag }}"
+      Role: "Web"
   when: infra_state == "present"
 
-- name: Ensure Database instance exists
+- name: Ensure DB instance exists
   amazon.aws.ec2_instance:
     name: "webdev-db"
     region: "{{ aws_region }}"
-    image_id: "{{ debian_ami_id }}"
+    image_id: "{{ debian_13_ami_id }}"
     instance_type: "{{ instance_type }}"
     key_name: "{{ webdev_key_name }}"
-    security_group: "{{ webdev_sg_id }}"
+    security_group: "{{ db_sg_id }}"
+    network:
+      assign_public_ip: true
     wait: true
     exact_count: 1
-    tags: { Project: "webdev-lab", Role: "DB" }
+    tags:
+      Project: "{{ project_tag }}"
+      Role: "DB"
   when: infra_state == "present"
 
-- name: Terminate all webdev-lab instances
+# === Mode destruction ======================================
+
+- name: Terminate all instances for this project
   amazon.aws.ec2_instance:
     region: "{{ aws_region }}"
     state: absent
     wait: true
-    filters: { "tag:Project": "webdev-lab" }
+    filters:
+      "tag:Project": "{{ project_tag }}"
   when: infra_state == "absent"
 
-- name: Delete webdev security group
+# On supprime les SG dans l'ordre DB -> Web -> Bastion
+- name: Delete DB security group
   amazon.aws.ec2_security_group:
-    name: "{{ webdev_sg_name }}"
+    name: "{{ db_sg_name }}"
+    region: "{{ aws_region }}"
+    state: absent
+  when: infra_state == "absent"
+
+- name: Delete Web security group
+  amazon.aws.ec2_security_group:
+    name: "{{ web_sg_name }}"
+    region: "{{ aws_region }}"
+    state: absent
+  when: infra_state == "absent"
+
+- name: Delete Bastion security group
+  amazon.aws.ec2_security_group:
+    name: "{{ bastion_sg_name }}"
     region: "{{ aws_region }}"
     state: absent
   when: infra_state == "absent"

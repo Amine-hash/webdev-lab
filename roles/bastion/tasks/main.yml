@@ -1,0 +1,36 @@
+- name: Install admin tools on bastion
+  ansible.builtin.apt:
+    name:
+      - htop
+      - vim
+      - tmux
+      - curl
+      - git
+    state: present
+    update_cache: yes
+  tags: [bastion]
+
+- name: Harden SSH configuration (no root login, no password auth)
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backup: yes
+  loop:
+    - { regexp: '^#?PermitRootLogin',        line: 'PermitRootLogin no' }
+    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+  notify: restart ssh
+  tags: [bastion]
+
+- name: Ensure SSH service is enabled and running
+  ansible.builtin.service:
+    name: ssh
+    state: started
+    enabled: yes
+  tags: [bastion]
+
+- name: restart ssh
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
+  tags: [bastion]
