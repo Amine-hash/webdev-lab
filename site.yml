@@ -7,7 +7,7 @@
       tags: [infra]
 
 - name: Configure Database servers
-  hosts: tag_Role__DB
+  hosts: tag_Role_DB
   become: yes
   gather_facts: yes
   roles:
