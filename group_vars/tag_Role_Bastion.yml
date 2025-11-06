@@ -1,0 +1,4 @@
+---
+bastion_user: "admin"
+ansible_ssh_common_args: ""
+
