@@ -33,8 +33,16 @@
   tags: [web]
 
 - name: Enable mod_headers for Apache
-  apache2_module:
+  community.general.apache2_module:
     name: headers
+    state: present
+    ignore_configcheck: true  # Add this to prevent config check during module enable
+  notify: restart apache
+  tags: [web]
+
+- name: Enable mod_rewrite for Apache
+  community.general.apache2_module:
+    name: rewrite
     state: present
   notify: restart apache
   tags: [web]
@@ -124,6 +132,39 @@
   register: enable_security
   changed_when: enable_security.rc == 0
   notify: reload apache
+  tags: [web]
+
+- name: Configure Apache security headers
+  ansible.builtin.blockinfile:
+    path: /etc/apache2/conf-available/security-headers.conf
+    create: yes
+    block: |
+      <IfModule mod_headers.c>
+          Header set X-Content-Type-Options "nosniff"
+          Header set X-Frame-Options "SAMEORIGIN"
+          Header set X-XSS-Protection "1; mode=block"
+          Header set Content-Security-Policy "default-src 'self'"
+      </IfModule>
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart apache
+  tags: [web]
+
+- name: Enable security headers configuration
+  ansible.builtin.file:
+    src: /etc/apache2/conf-available/security-headers.conf
+    dest: /etc/apache2/conf-enabled/security-headers.conf
+    state: link
+  notify: restart apache
+  tags: [web]
+
+- name: Remove Header directives from security.conf
+  ansible.builtin.lineinfile:
+    path: /etc/apache2/conf-enabled/security.conf
+    regexp: '^(\s)*Header.*$'
+    state: absent
+  notify: restart apache
   tags: [web]
 
 - name: Check database connectivity
