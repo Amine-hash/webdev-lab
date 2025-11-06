@@ -1,15 +1,2 @@
 ---
-# La configuration SSH est maintenant gérée dans inventory_aws_ec2.yml
-
-# SSH configuration for DB servers
-ansible_ssh_common_args: >-
-  -o StrictHostKeyChecking=no 
-  -o UserKnownHostsFile=/dev/null 
-  -o ForwardAgent=yes 
-  -o BatchMode=yes
-  -o ConnectTimeout=60
-  -o ServerAliveInterval=30
-  -o ControlMaster=auto
-  -o ControlPath=/tmp/ansible-ssh-%h-%p-%r
-  -o ControlPersist=15m
-  -o ProxyCommand='ssh -i /home/admin/.ssh/labsuser.pem -W %h:%p -q admin@{{ groups.tag_Role_Bastion[0] }}'
+# La configuration SSH est gérée dans inventory_aws_ec2.yml via compose

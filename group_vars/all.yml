@@ -21,21 +21,12 @@ ssh_cidr: "0.0.0.0/0"           # Accès SSH au bastion
 web_http_cidr: "0.0.0.0/0"      # Accès HTTP aux serveurs web
 phpmyadmin_cidr: "0.0.0.0/0"    # Accès phpMyAdmin
 
-# Configuration SSH
+# Configuration SSH de base
 ansible_user: admin
 ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
 
-# SSH common arguments - base configuration
-ansible_ssh_common_args: >-
-  -o StrictHostKeyChecking=no 
-  -o UserKnownHostsFile=/dev/null 
-  -o ForwardAgent=yes 
-  -o BatchMode=yes
-  -o ConnectTimeout=60
-  -o ServerAliveInterval=30
-  -o ControlMaster=auto
-  -o ControlPath=/tmp/ansible-ssh-%h-%p-%r
-  -o ControlPersist=15m
+# SSH ProxyCommand configuration
+ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardAgent=yes -o BatchMode=yes -o ConnectTimeout=60 -o ServerAliveInterval=30'
 
 # Configuration Base de données
 db_name: "Test1"
