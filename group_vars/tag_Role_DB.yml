@@ -6,4 +6,4 @@ ansible_ssh_common_args: >-
   -o BatchMode=yes
   -o ConnectTimeout=60
   -o ServerAliveInterval=30
-  -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -q {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}"
+  -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o IdentityFile={{ ansible_ssh_private_key_file }} -W %h:%p -q {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}"

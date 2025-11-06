@@ -4,7 +4,7 @@ regions:
 
 filters:
   tag:Project: webdev-lab
-  instance-state-name: ["pending", "running"]
+  instance-state-name: ["running"]
 
 strict: no
 hostnames:
@@ -15,5 +15,7 @@ keyed_groups:
     prefix: tag_Role
 
 compose:
-  ansible_host: private_ip_address
+  ansible_host: |
+    'public_ip_address' if tags.get('Role') == 'Bastion' else private_ip_address
   public_ip_address: public_ip_address
+  private_ip_address: private_ip_address
