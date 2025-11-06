@@ -1,40 +1,31 @@
+Host *
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    ServerAliveInterval 30
+    ControlMaster auto
+    ControlPath /tmp/ansible-ssh-%h-%p-%r
+    ControlPersist 15m
+    ForwardAgent yes
+    BatchMode yes
+    ConnectTimeout 60
+
 Host webdev-*
     User {{ ansible_user }}
     IdentityFile {{ ansible_ssh_private_key_file }}
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
-    ServerAliveInterval 60
-    TCPKeepAlive yes
-    ForwardAgent yes
-    Compression yes
-    ControlMaster auto
-    ControlPath ~/.ssh/control-%r@%h:%p
-    ControlPersist 5m
-    ConnectTimeout 60
-    BatchMode yes
-    AddKeysToAgent yes
-    PreferredAuthentications publickey
-    IdentitiesOnly yes
 
 Host webdev-web
     HostName {{ hostvars[groups['tag_Role_Web'][0]].private_ip_address }}
-    ProxyCommand ssh -W %h:%p -i {{ ansible_ssh_private_key_file }} {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
+    ProxyCommand ssh -W %h:%p {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
 
 Host webdev-db
     HostName {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}
-    ProxyCommand ssh -W %h:%p -i {{ ansible_ssh_private_key_file }} {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
+    ProxyCommand ssh -W %h:%p {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
 
 Host {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}
-    ProxyCommand ssh -W %h:%p -i {{ ansible_ssh_private_key_file }} {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
+    ProxyCommand ssh -W %h:%p {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
 
-# Configuration globale
-Host *
-    ServerAliveInterval 60
-    TCPKeepAlive yes
-    ForwardAgent yes
-    GSSAPIAuthentication no
-    ConnectTimeout 60
-    BatchMode yes
-    PreferredAuthentications publickey
-    AddKeysToAgent yes
-    IdentitiesOnly yes
+Host {{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
+    IdentityFile {{ ansible_ssh_private_key_file }}
+    User {{ ansible_user }}

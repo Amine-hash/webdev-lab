@@ -12,21 +12,11 @@
         cidr_ip: "{{ ssh_cidr }}"
         rule_desc: "Allow SSH from Internet"
     rules_egress:
-      - proto: tcp
-        from_port: 22
-        to_port: 22
+      - proto: -1
+        from_port: -1
+        to_port: -1
         cidr_ip: "0.0.0.0/0"
-        rule_desc: "Allow SSH to internal instances"
-      - proto: tcp
-        from_port: 80
-        to_port: 80
-        cidr_ip: "0.0.0.0/0"
-        rule_desc: "Allow HTTP for package management"
-      - proto: tcp
-        from_port: 443
-        to_port: 443
-        cidr_ip: "0.0.0.0/0"
-        rule_desc: "Allow HTTPS for package management"
+        rule_desc: "Allow all outbound traffic"
   register: bastion_sg
   when: infra_state == "present"
 
