@@ -23,3 +23,5 @@ compose:
     {%- else -%}
     {{ private_ip_address }}
     {%- endif -%}
+  public_ip_address: public_ip_address
+  private_ip_address: private_ip_address
