@@ -33,6 +33,39 @@
     - /var/lib/mysql
   tags: [db]
 
+- name: Stop MariaDB before repair
+  ansible.builtin.service:
+    name: mariadb
+    state: stopped
+  tags: [db]
+
+- name: Check and repair MySQL tables
+  ansible.builtin.command:
+    cmd: "mysqlcheck -A --repair --use-frm"
+  ignore_errors: yes
+  tags: [db]
+
+- name: Copy repair script
+  ansible.builtin.copy:
+    src: repair_tables.sh
+    dest: /usr/local/bin/repair_tables.sh
+    mode: '0755'
+    owner: root
+    group: root
+  tags: [db]
+
+- name: Run repair script
+  ansible.builtin.command:
+    cmd: /usr/local/bin/repair_tables.sh
+  register: repair_result
+  ignore_errors: yes
+  tags: [db]
+
+- name: Debug repair results
+  ansible.builtin.debug:
+    var: repair_result
+  tags: [db]
+
 - name: Initialize MariaDB data directory if needed
   ansible.builtin.command:
     cmd: mariadb-install-db --user=mysql
@@ -100,7 +133,6 @@
     state: present
     check_implicit_admin: yes
     login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
   tags: [db]
 
 - name: Create .my.cnf file for root
