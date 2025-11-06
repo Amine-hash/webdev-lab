@@ -23,6 +23,7 @@
       - apache2-bin
       - python3-pymysql
       - libapache2-mod-php
+      - apache2-mod-headers
     state: present
     update_cache: yes
     cache_valid_time: 3600
