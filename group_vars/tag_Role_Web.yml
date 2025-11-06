@@ -1,5 +1,3 @@
 ---
-# Tous les serveurs Web passent par le bastion pour SSH
-ansible_ssh_common_args: >-
-  -o ProxyCommand="ssh -i {{ ansible_ssh_private_key_file }} -W %h:%p -q {{ bastion_user }}@{{ groups['tag_Role_Bastion'] | map('extract', hostvars) | selectattr('public_ip_address', 'defined') | map(attribute='public_ip_address') | first }}"
+# La configuration SSH est maintenant gérée dans inventory_aws_ec2.yml
 

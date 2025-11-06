@@ -23,7 +23,16 @@
 - name: Configure Database servers
   hosts: tag_Role_DB
   become: yes
-  gather_facts: yes
+  gather_facts: no
+  pre_tasks:
+    - name: Wait for SSH to become available
+      wait_for_connection:
+        delay: 10
+        timeout: 300
+      vars:
+        ansible_connection: local
+    - name: Gather facts
+      setup:
   roles:
     - role: database
       tags: [db]
