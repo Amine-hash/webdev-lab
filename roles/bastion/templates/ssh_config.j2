@@ -22,7 +22,7 @@ Host webdev-*
 Host 172.31.*
     IdentityFile {{ ansible_ssh_private_key_file }}
     User {{ ansible_user }}
-    ProxyCommand ssh -W %h:%p {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}
+    ProxyCommand ssh -W %h:%p {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     ForwardAgent yes
@@ -37,7 +37,7 @@ Host webdev-db
     HostName {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}
     ProxyCommand ssh -W %h:%p {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
 
-Host {{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}
+Host {{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
     IdentityFile {{ ansible_ssh_private_key_file }}
     User {{ ansible_user }}
     StrictHostKeyChecking no

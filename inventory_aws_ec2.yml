@@ -16,6 +16,6 @@ keyed_groups:
 
 compose:
   ansible_host: |
-    'public_ip_address' if tags.get('Role') == 'Bastion' else private_ip_address
+    public_ip_address if tags.get('Role') == 'Bastion' else private_ip_address
   public_ip_address: public_ip_address
   private_ip_address: private_ip_address
