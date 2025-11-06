@@ -79,4 +79,3 @@
       ('Martin', 'Bob')
   when: users_count.query_result[0][0].count == 0
   tags: [db]
-  tags: [db]

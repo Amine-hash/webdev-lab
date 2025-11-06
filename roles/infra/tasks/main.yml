@@ -237,12 +237,43 @@
       "tag:Project": "{{ project_tag }}"
   when: infra_state == "absent"
 
-# On supprime les SG dans l'ordre DB -> Web -> Bastion
+- name: Wait for instances to be fully terminated
+  ansible.builtin.pause:
+    seconds: 30
+  when: infra_state == "absent"
+
+# Supprimer les règles de sécurité inter-groupes d'abord
+- name: Remove cross-references in security groups
+  amazon.aws.ec2_security_group:
+    name: "{{ item }}"
+    description: "Cleaning security group"
+    region: "{{ aws_region }}"
+    state: present
+    rules: []
+    rules_egress: []
+    purge_rules: true
+    purge_rules_egress: true
+  loop:
+    - "{{ db_sg_name }}"
+    - "{{ web_sg_name }}"
+    - "{{ bastion_sg_name }}"
+  when: infra_state == "absent"
+
+- name: Wait for security group rules to be removed
+  ansible.builtin.pause:
+    seconds: 10
+  when: infra_state == "absent"
+
+# On supprime les SG dans l'ordre DB -> Web -> Bastion avec gestion des erreurs
 - name: Delete DB security group
   amazon.aws.ec2_security_group:
     name: "{{ db_sg_name }}"
     region: "{{ aws_region }}"
     state: absent
+  register: delete_db_sg
+  until: delete_db_sg is not failed
+  retries: 6
+  delay: 10
   when: infra_state == "absent"
 
 - name: Delete Web security group
@@ -250,6 +281,10 @@
     name: "{{ web_sg_name }}"
     region: "{{ aws_region }}"
     state: absent
+  register: delete_web_sg
+  until: delete_web_sg is not failed
+  retries: 6
+  delay: 10
   when: infra_state == "absent"
 
 - name: Delete Bastion security group
@@ -257,6 +292,10 @@
     name: "{{ bastion_sg_name }}"
     region: "{{ aws_region }}"
     state: absent
+  register: delete_bastion_sg
+  until: delete_bastion_sg is not failed
+  retries: 6
+  delay: 10
   when: infra_state == "absent"
 
 - name: Update DB security group with Web server access
