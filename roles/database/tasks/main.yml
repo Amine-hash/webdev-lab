@@ -33,6 +33,7 @@
     name: "{{ db_name }}"
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
   tags: [db]
 
 - name: Create database user with privileges
@@ -43,11 +44,14 @@
     host: '%'
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
   tags: [db]
 
 - name: Create Users table
   community.mysql.mysql_query:
     login_db: "{{ db_name }}"
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_password }}"
     query: |
       CREATE TABLE IF NOT EXISTS Users (
         ID INT PRIMARY KEY AUTO_INCREMENT,
@@ -59,6 +63,8 @@
 - name: Insert initial users data
   community.mysql.mysql_query:
     login_db: "{{ db_name }}"
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_password }}"
     query: |
       INSERT IGNORE INTO Users (FirstName, LastName) VALUES 
         ('John', 'Doe'),
