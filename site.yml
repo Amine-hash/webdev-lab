@@ -1,6 +1,7 @@
 ---
 - name: Infra AWS Web Dev Lab
   hosts: localhost
+  gather_facts: yes  # Important d'avoir les facts pour localhost
   roles:
     - infra
 
@@ -16,18 +17,21 @@
 
 - name: Configure Database servers
   hosts: tag_Role_DB
-  gather_facts: no
+  become: yes
+  gather_facts: yes  # Important d'avoir les facts pour la config réseau
   roles:
     - database
 
 - name: Configure Web servers
   hosts: tag_Role_Web
-  gather_facts: no
+  become: yes
+  gather_facts: yes  # Important d'avoir les facts pour la config réseau
   roles:
     - webserver
 
 - name: Configure Bastion servers
   hosts: tag_Role_Bastion
-  gather_facts: no
+  become: yes
+  gather_facts: yes  # Important d'avoir les facts pour la config SSH
   roles:
     - bastion

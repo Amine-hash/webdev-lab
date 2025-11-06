@@ -19,6 +19,7 @@
   loop:
     - { regexp: '^#?PermitRootLogin',        line: 'PermitRootLogin no' }
     - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+    - { regexp: '^#?PubkeyAuthentication',   line: 'PubkeyAuthentication yes' }
   notify: restart ssh
   tags: [bastion]
 
