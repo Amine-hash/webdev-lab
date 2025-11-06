@@ -8,9 +8,9 @@ filters:
 
 strict: no
 hostnames:
-  - private-ip-address
   - tag:Name
-  - private-dns-name
+  - private-ip-address
+  - public-ip-address
 
 keyed_groups:
   - key: tags.Role
@@ -18,38 +18,37 @@ keyed_groups:
     separator: ''
 
 compose:
-  # Configuration des hôtes
+  # Configure l'hôte principal pour SSH
   ansible_host: >-
-    {%- if tags.Role == "Bastion" -%}
+    {%- if tags.Role == 'Bastion' -%}
     {{- public_ip_address -}}
     {%- else -%}
     {{- private_ip_address -}}
     {%- endif -%}
 
-  # Configuration utilisateur commune
+  # Paramètres SSH communs
   ansible_user: admin
   ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
 
-  # Configuration SSH de base
+  # Configuration SSH pour les hôtes non-Bastion
   ansible_ssh_common_args: >-
-    {%- if tags.Role != "Bastion" -%}
+    {%- if tags.Role != 'Bastion' -%}
     -o StrictHostKeyChecking=no 
     -o UserKnownHostsFile=/dev/null 
-    -o ForwardAgent=yes
     -o ServerAliveInterval=60
-    -o ControlMaster=auto 
-    -o ControlPersist=30m
-    -o ProxyCommand="ssh -q -W %h:%p -i /home/admin/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@{{ groups['tag_Role_Bastion'][0] }}"
+    -o ProxyCommand="ssh -q -W %h:%p -i {{ ansible_ssh_private_key_file }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {{ ansible_user }}@{{ groups.tag_Role_Bastion[0] }}"
     {%- endif -%}
 
-  # Variables d'environnement
-  bastion_public_ip: "{{ public_ip_address if tags.Role == 'Bastion' else '' }}"
-  instance_private_ip: "{{ private_ip_address }}"
-  instance_id: "{{ instance_id }}"
-  instance_state: "{{ state.name }}"
-  instance_type: "{{ instance_type }}"
+  # Configuration SSH pour le Bastion
+  ansible_ssh_extra_args: >-
+    {%- if tags.Role == 'Bastion' -%}
+    -o StrictHostKeyChecking=no 
+    -o UserKnownHostsFile=/dev/null
+    {%- endif -%}
 
-  # Tags importants
-  project_tag: "{{ tags.Project }}"
-  role_tag: "{{ tags.Role }}"
-  name_tag: "{{ tags.Name }}"
+  # Variables utiles pour le reste du playbook
+  public_ip: "{{ public_ip_address }}"
+  private_ip: "{{ private_ip_address }}"
+  instance_id: "{{ instance_id }}"
+  instance_name: "{{ tags.Name }}"
+  instance_role: "{{ tags.Role }}"

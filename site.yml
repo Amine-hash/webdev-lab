@@ -25,35 +25,28 @@
   become: yes
   gather_facts: no
   vars:
-    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
-    ansible_ssh_common_args: >-
-      -o StrictHostKeyChecking=no 
-      -o UserKnownHostsFile=/dev/null 
-      -o ForwardAgent=yes
-      -o ControlMaster=auto 
-      -o ControlPersist=30m
-      -o ProxyCommand="ssh -W %h:%p -i /home/admin/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@{{ bastion_host }}"
+    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip }}"
   pre_tasks:
     - name: Wait for bastion to be available
       wait_for:
         host: "{{ bastion_host }}"
         port: 22
         timeout: 300
+        connect_timeout: 5
       delegate_to: localhost
       become: no
+      register: bastion_wait
+      until: bastion_wait is success
+      retries: 30
+      delay: 10
 
-    - name: Wait for DB instance SSH to be available through bastion
+    - name: Ensure SSH connection through bastion works
       wait_for:
         host: "{{ ansible_host }}"
         port: 22
         timeout: 300
-        search_regex: OpenSSH
-      vars:
-        ansible_connection: ssh
-        ansible_user: admin
-        ansible_host: "{{ hostvars[inventory_hostname].private_ip_address }}"
-        ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
-      delegate_to: "{{ bastion_host }}"
+        connect_timeout: 5
+      delegate_to: localhost
 
     - name: Test SSH connection through bastion
       command: "hostname"
@@ -73,14 +66,7 @@
   become: yes
   gather_facts: no
   vars:
-    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
-    ansible_ssh_common_args: >-
-      -o StrictHostKeyChecking=no 
-      -o UserKnownHostsFile=/dev/null 
-      -o ForwardAgent=yes
-      -o ControlMaster=auto 
-      -o ControlPersist=30m
-      -o ProxyCommand="ssh -W %h:%p -i /home/admin/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@{{ bastion_host }}"
+    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip }}"
   pre_tasks:
     - name: Wait for bastion to be available
       wait_for:
