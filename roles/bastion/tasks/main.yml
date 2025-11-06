@@ -30,6 +30,7 @@
     regexp: "{{ item.regexp }}"
     line: "{{ item.line }}"
     backup: yes
+    create: yes
   loop:
     - { regexp: '^#?PermitRootLogin',        line: 'PermitRootLogin no' }
     - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
@@ -45,29 +46,32 @@
   tags: [bastion]
 
 # SSH key setup
-- name: Ensure .ssh directory exists
+- name: Ensure .ssh directory exists with correct permissions
   ansible.builtin.file:
     path: "/home/{{ ansible_user }}/.ssh"
     state: directory
+    mode: '0700'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    mode: "0700"
   tags: [bastion]
 
 - name: Copy SSH private key to bastion
   ansible.builtin.copy:
-    src: "{{ ansible_ssh_private_key_file }}"
+    src: "{{ inventory_dir }}/../.ssh/labsuser.pem"
     dest: "/home/{{ ansible_user }}/.ssh/labsuser.pem"
+    mode: '0600'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    mode: "0600"
+    force: no
   tags: [bastion]
 
 - name: Configure SSH client for proxy access
   ansible.builtin.template:
     src: ssh_config.j2
     dest: "/home/{{ ansible_user }}/.ssh/config"
-    mode: "0600"
+    mode: '0600'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
+    force: no
+  notify: restart ssh
   tags: [bastion]

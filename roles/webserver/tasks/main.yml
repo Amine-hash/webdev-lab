@@ -2,6 +2,7 @@
   ansible.builtin.apt:
     update_cache: yes
     upgrade: dist
+    cache_valid_time: 3600  # Add cache validity to avoid unnecessary updates
   tags: [web]
 
 - name: Install Apache, PHP, DB client and lynx
@@ -18,19 +19,17 @@
     state: present
   tags: [web]
 
-- name: Enable Apache headers module
+- name: Enable required Apache modules
   apache2_module:
-    name: headers
+    name: "{{ item }}"
     state: present
+  with_items:
+    - headers
+    - php
   notify: restart apache
   tags: [web]
 
-- name: Enable Apache php module
-  apache2_module:
-    name: php
-    state: present
-  notify: restart apache
-  tags: [web]
+
 
 - name: Ensure Apache is started and enabled
   ansible.builtin.service:
@@ -39,59 +38,33 @@
     enabled: yes
   tags: [web]
 
-- name: Create development group
-  ansible.builtin.group:
-    name: www-data
-    state: present
-  tags: [web]
-
 - name: Ensure /var/www/html exists with correct permissions
   ansible.builtin.file:
     path: /var/www/html
     state: directory
     owner: www-data
     group: www-data
-    mode: "0775"
+    mode: '0755'
   tags: [web]
 
-- name: Deploy index.html
+- name: Copy web files
   ansible.builtin.template:
-    src: index.html.j2
-    dest: /var/www/html/index.html
+    src: "{{ item }}"
+    dest: "/var/www/html/{{ item | basename | regex_replace('\\.j2$', '') }}"
     owner: www-data
     group: www-data
-    mode: "0644"
-    force: yes
-  register: index_deployment
-  tags: [web]
-
-- name: Deploy info.php
-  ansible.builtin.template:
-    src: info.php.j2
-    dest: /var/www/html/info.php
-    owner: www-data
-    group: www-data
-    mode: "0644"
-    force: yes
-  register: info_deployment
+    mode: '0644'
+  with_items:
+    - index.html.j2
+    - info.php.j2
+    - dump.table.php.j2
+  notify: restart apache
   tags: [web]
 
 - name: Compute DB host private IP (first DB server)
   ansible.builtin.set_fact:
     db_host: "{{ hostvars[groups['tag_Role_DB'][0]].ansible_default_ipv4.address }}"
   when: groups['tag_Role_DB'] is defined and (groups['tag_Role_DB'] | length) > 0
-  tags: [web]
-
-- name: Deploy dump.table.php (PHP app connecting to DB)
-  ansible.builtin.template:
-    src: dump.table.php.j2
-    dest: /var/www/html/dump.table.php
-    owner: www-data
-    group: www-data
-    mode: "0644"
-    force: yes
-  register: dump_deployment
-  notify: restart apache
   tags: [web]
 
 # Les autorisations sont maintenant gérées par les tâches de déploiement ci-dessus
@@ -121,4 +94,20 @@
       Header set Content-Security-Policy "default-src 'self'"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - SECURITY HEADERS"
   notify: reload apache
+  tags: [web]
+
+- name: Check database connectivity
+  community.mysql.mysql_query:
+    login_host: "{{ db_host }}"
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_password }}"
+    login_db: "{{ db_name }}"
+    query: "SELECT 1"
+  register: db_check
+  ignore_errors: yes
+  tags: [web]
+
+- name: Display database connectivity status
+  debug:
+    msg: "Database connection {{ 'succeeded' if db_check.failed is not defined else 'failed: ' + db_check.msg }}"
   tags: [web]

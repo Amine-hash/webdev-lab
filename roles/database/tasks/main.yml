@@ -2,6 +2,7 @@
   ansible.builtin.apt:
     update_cache: yes
     upgrade: dist
+    cache_valid_time: 3600  # Add cache validity
   tags: [db]
 
 - name: Install MariaDB and PyMySQL
@@ -17,7 +18,7 @@
     path: /etc/mysql/mariadb.conf.d/50-server.cnf
     regexp: '^bind-address\s*='
     line: 'bind-address            = 0.0.0.0'
-    backup: yes
+    backup: no  # No need for backup on each run
   notify: restart mariadb
   tags: [db]
 
@@ -47,7 +48,7 @@
     login_user: root
   tags: [db]
 
-- name: Create Users table
+- name: Create Users table and insert default data if not exists
   community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
@@ -56,36 +57,29 @@
       CREATE TABLE IF NOT EXISTS Users (
         ID INT PRIMARY KEY AUTO_INCREMENT,
         FirstName VARCHAR(50),
-        LastName VARCHAR(50)
+        LastName VARCHAR(50),
+        UNIQUE KEY unique_user (FirstName, LastName)
       );
+      INSERT IGNORE INTO Users (FirstName, LastName) VALUES 
+        ('John', 'Doe'),
+        ('Jane', 'Smith'),
+        ('Bob', 'Johnson');
   tags: [db]
 
-- name: Check if Users table has data
+- name: Allow remote root access for phpMyAdmin
+  community.mysql.mysql_user:
+    name: root
+    login_user: root
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    host: '%'
+    priv: '*.*:ALL,GRANT'
+    password: '{{ db_password }}'
+    state: present
+  tags: [db]
+
+- name: Flush MySQL privileges
   community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
-    login_db: "{{ db_name }}"
-    query: |
-      SELECT COUNT(*) as count FROM Users;
-  register: table_count
-  tags: [db]
-
-- name: Insert initial users if table is empty
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-    login_db: "{{ db_name }}"
-    query: |
-      INSERT INTO Users (FirstName, LastName) 
-      SELECT * FROM (
-        SELECT 'John' as FirstName, 'Doe' as LastName UNION ALL
-        SELECT 'Jane', 'Smith' UNION ALL
-        SELECT 'Bob', 'Johnson'
-      ) AS tmp
-      WHERE NOT EXISTS (
-        SELECT 1 FROM Users WHERE (FirstName = 'John' AND LastName = 'Doe')
-        OR (FirstName = 'Jane' AND LastName = 'Smith')
-        OR (FirstName = 'Bob' AND LastName = 'Johnson')
-      );
-  when: table_count.query_result[0][0].count == 0
+    query: FLUSH PRIVILEGES
   tags: [db]
