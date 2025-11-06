@@ -38,4 +38,7 @@ ansible_ssh_common_args: >-
   -o BatchMode=yes 
   -o ConnectTimeout=60 
   -o ServerAliveInterval=30
+  -o ControlMaster=auto
+  -o ControlPath=/tmp/ansible-ssh-%h-%p-%r
+  -o ControlPersist=15m
 
