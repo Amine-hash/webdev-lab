@@ -14,12 +14,20 @@
       - lynx
       - apache2-utils
       - apache2-bin
+      - libapache2-mod-php
     state: present
   tags: [web]
 
 - name: Enable Apache headers module
   apache2_module:
     name: headers
+    state: present
+  notify: restart apache
+  tags: [web]
+
+- name: Enable Apache php module
+  apache2_module:
+    name: php
     state: present
   notify: restart apache
   tags: [web]
@@ -31,12 +39,18 @@
     enabled: yes
   tags: [web]
 
+- name: Create development group
+  ansible.builtin.group:
+    name: www-data
+    state: present
+  tags: [web]
+
 - name: Ensure /var/www/html exists with correct permissions
   ansible.builtin.file:
     path: /var/www/html
     state: directory
     owner: www-data
-    group: "{{ dev_group }}"
+    group: www-data
     mode: "0775"
   tags: [web]
 
@@ -45,8 +59,9 @@
     src: index.html.j2
     dest: /var/www/html/index.html
     owner: www-data
-    group: "{{ dev_group }}"
+    group: www-data
     mode: "0644"
+    force: no
   tags: [web]
 
 - name: Deploy info.php
@@ -54,9 +69,9 @@
     src: info.php.j2
     dest: /var/www/html/info.php
     owner: www-data
-    group: "{{ dev_group }}"
+    group: www-data
     mode: "0644"
-  notify: restart apache
+    force: no
   tags: [web]
 
 - name: Compute DB host private IP (first DB server)
@@ -70,16 +85,16 @@
     src: dump.table.php.j2
     dest: /var/www/html/dump.table.php
     owner: www-data
-    group: "{{ dev_group }}"
+    group: www-data
     mode: "0644"
-  notify: restart apache
+    force: no
   tags: [web]
 
 - name: Ensure PHP files have correct permissions
   ansible.builtin.file:
     path: "/var/www/html/{{ item }}"
     owner: www-data
-    group: "{{ dev_group }}"
+    group: www-data
     mode: "0644"
   loop:
     - info.php

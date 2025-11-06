@@ -57,17 +57,30 @@
 
 - name: Create Users table
   community.mysql.mysql_query:
-    login_db: "{{ db_name }}"
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
+    login_db: "{{ db_name }}"
     query: |
       CREATE TABLE IF NOT EXISTS Users (
         ID INT PRIMARY KEY AUTO_INCREMENT,
         FirstName VARCHAR(50),
         LastName VARCHAR(50)
       );
-      INSERT IGNORE INTO Users (FirstName, LastName) VALUES 
-        ('John', 'Doe'),
-        ('Jane', 'Smith'),
-        ('Bob', 'Johnson');
+  tags: [db]
+
+- name: Insert initial users if table is empty
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    login_db: "{{ db_name }}"
+    query: |
+      INSERT INTO Users (FirstName, LastName)
+      SELECT * FROM (
+        SELECT 'John' as FirstName, 'Doe' as LastName UNION ALL
+        SELECT 'Jane', 'Smith' UNION ALL
+        SELECT 'Bob', 'Johnson'
+      ) AS tmp
+      WHERE NOT EXISTS (
+        SELECT 1 FROM Users WHERE ID IN (1,2,3)
+      );
   tags: [db]

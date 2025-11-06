@@ -1,47 +1,31 @@
-# Configuration AWS
-aws_region: us-east-1
-vpc_id: "{{ ansible_env.AWS_VPC_ID | default(omit) }}"
-subnet_id: "{{ ansible_env.AWS_SUBNET_ID | default(omit) }}"
+# AWS Region
+aws_region: "us-east-1"
 
-# Configuration des instances
-instance_type: t3.micro
-debian_ami_id: "ami-0f9c27b471bdcd702"
-webdev_key_name: "vockey"
+# Instance AMI
+debian_ami_id: "ami-058bd2d568351da34"
 
-# Identification du projet
-project_tag: "webdev-lab"
+# Instance type
+instance_type: "t2.micro"
 
-# Security Groups
-bastion_sg_name: "{{ project_tag }}-bastion-sg"
-web_sg_name: "{{ project_tag }}-web-sg"
-db_sg_name: "{{ project_tag }}-db-sg"
+# Project identification
+project_tag: "webdev"
 
-# Groupe de développement pour les permissions web
-dev_group: www-data
+# Access configuration
+ssh_cidr: "0.0.0.0/0"  # Allow SSH access from anywhere for demonstration
+web_http_cidr: "0.0.0.0/0"  # Allow HTTP access from anywhere
+webdev_key_name: "labsuser"
 
-# CIDR autorisés
-ssh_cidr: "0.0.0.0/0"           # Accès SSH au bastion
-web_http_cidr: "0.0.0.0/0"      # Accès HTTP aux serveurs web
-phpmyadmin_cidr: "0.0.0.0/0"    # Accès phpMyAdmin
+# Security group names
+bastion_sg_name: "webdev-bastion-sg"
+web_sg_name: "webdev-web-sg"
+db_sg_name: "webdev-db-sg"
 
-# Configuration SSH de base
-ansible_user: admin
-ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
-
-# Configuration Base de données
+# Database configuration
 db_name: "Test1"
 db_user: "admin"
-db_password: "IG2IUser"         # À changer en production !
+db_password: "IG2IUser"
 db_port: 3306
 
-# SSH configuration commune
-ansible_ssh_common_args: >-
-  {% if inventory_hostname not in groups['tag_Role_Bastion'] %}
-  -o ProxyCommand='ssh -W %h:%p -q -i {{ ansible_ssh_private_key_file }} {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}'
-  {% endif %}
-  -o StrictHostKeyChecking=no
-  -o UserKnownHostsFile=/dev/null
-  -o ForwardAgent=yes
-  -o BatchMode=yes
-  -o ConnectTimeout=60
-  -o ServerAliveInterval=30
+# Apache configuration
+web_user: "www-data"
+web_group: "www-data"
