@@ -16,6 +16,9 @@ bastion_sg_name: "{{ project_tag }}-bastion-sg"
 web_sg_name: "{{ project_tag }}-web-sg"
 db_sg_name: "{{ project_tag }}-db-sg"
 
+# Groupe de développement pour les permissions web
+dev_group: www-data
+
 # CIDR autorisés
 ssh_cidr: "0.0.0.0/0"           # Accès SSH au bastion
 web_http_cidr: "0.0.0.0/0"      # Accès HTTP aux serveurs web
@@ -31,11 +34,11 @@ db_user: "admin"
 db_password: "IG2IUser"         # À changer en production !
 db_port: 3306
 
-# SSH common arguments
+# SSH configuration commune
 ansible_ssh_common_args: >-
-  {%- if 'tag_Role_Bastion' not in group_names -%}
-  -o ProxyCommand="ssh -W %h:%p -i {{ ansible_ssh_private_key_file }} {{ ansible_user }}@{{ (groups['tag_Role_Bastion'] | first) }}"
-  {%- endif -%}
+  {% if inventory_hostname not in groups['tag_Role_Bastion'] %}
+  -o ProxyCommand='ssh -W %h:%p -q -i {{ ansible_ssh_private_key_file }} {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}'
+  {% endif %}
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
   -o ForwardAgent=yes
