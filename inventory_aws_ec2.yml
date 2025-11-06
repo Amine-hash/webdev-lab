@@ -2,10 +2,13 @@ plugin: aws_ec2
 regions:
   - us-east-1
 keyed_groups:
-  - key: tags.Role
-    prefix: tag_Role_
+  - prefix: tag_Role_
+    key: tags['Role']
+    separator: ''
 hostnames:
+  - tag:Name
   - private_ip_address
+  - public_ip_address
 compose:
   ansible_host: >-
     {%- if tags.Role == "Bastion" -%}
