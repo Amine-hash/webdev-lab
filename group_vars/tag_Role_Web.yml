@@ -1,0 +1,5 @@
+---
+# Tous les serveurs Web passent par le bastion pour SSH
+ansible_ssh_common_args: >-
+  -o ProxyCommand="ssh -i {{ ansible_ssh_private_key_file }} -W %h:%p -q {{ bastion_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}"
+

@@ -47,3 +47,5 @@ project_tag: "webdev-lab"
 bastion_sg_name: "{{ project_tag }}-bastion-sg"
 web_sg_name: "{{ project_tag }}-web-sg"
 db_sg_name: "{{ project_tag }}-db-sg"
+
+bastion_user: "admin"
