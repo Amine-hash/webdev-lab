@@ -31,6 +31,13 @@
   register: packages_installed
   tags: [web]
 
+- name: Enable mod_headers for Apache
+  apache2_module:
+    name: headers
+    state: present
+  notify: restart apache
+  tags: [web]
+
 - name: Get list of enabled Apache modules
   ansible.builtin.command: apache2ctl -M
   register: enabled_modules
@@ -43,7 +50,6 @@
     state: present
   with_items:
     - php
-    - headers
     - rewrite
   notify: restart apache
   tags: [web]
