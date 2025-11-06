@@ -5,7 +5,7 @@ keyed_groups:
   - key: tags.Role
     prefix: tag_Role_
 hostnames:
-  - name
+  - private_ip_address
 compose:
   ansible_host: >-
     {%- if tags.Role == "Bastion" -%}
