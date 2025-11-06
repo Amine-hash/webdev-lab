@@ -23,7 +23,6 @@
       - apache2-bin
       - python3-pymysql
       - libapache2-mod-php
-      - apache2-mod-headers
     state: present
     update_cache: yes
     cache_valid_time: 3600
@@ -36,8 +35,6 @@
   community.general.apache2_module:
     name: headers
     state: present
-    ignore_configcheck: true  # Add this to prevent config check during module enable
-  notify: restart apache
   tags: [web]
 
 - name: Enable mod_rewrite for Apache
@@ -134,6 +131,14 @@
   notify: reload apache
   tags: [web]
 
+- name: Remove old security headers from security.conf
+  ansible.builtin.lineinfile:
+    path: /etc/apache2/conf-enabled/security.conf
+    regexp: '^(\s)*Header.*$'
+    state: absent
+  notify: restart apache
+  tags: [web]
+
 - name: Configure Apache security headers
   ansible.builtin.blockinfile:
     path: /etc/apache2/conf-available/security-headers.conf
@@ -156,14 +161,6 @@
     src: /etc/apache2/conf-available/security-headers.conf
     dest: /etc/apache2/conf-enabled/security-headers.conf
     state: link
-  notify: restart apache
-  tags: [web]
-
-- name: Remove Header directives from security.conf
-  ansible.builtin.lineinfile:
-    path: /etc/apache2/conf-enabled/security.conf
-    regexp: '^(\s)*Header.*$'
-    state: absent
   notify: restart apache
   tags: [web]
 
