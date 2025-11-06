@@ -5,27 +5,55 @@
 </head>
 <body>
 <?php
-    $host = "{{ db_host }}";
-    $database = "{{ db_name }}";
-    $user = "{{ db_user }}";
-    $pass = "{{ db_password }}";
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
+$host = "{{ db_host }}";
+$database = "{{ db_name }}";
+$user = "{{ db_user }}";
+$pass = "{{ db_password }}";
+
+echo "Trying to connect to database $database on host $host as user $user<br>";
+
+try {
     $conn = new mysqli($host, $user, $pass, $database);
+
     if ($conn->connect_errno) {
-        printf("Connection to database failed: %s<br>", $conn->connect_error);
-        exit();
+        throw new Exception("Connection to database failed: " . $conn->connect_error);
     }
-    echo "Here is the list of Users from the Database $database<br>";
+
+    echo "Successfully connected to database $database<br>";
+    echo "Here is the list of Users from the Database:<br>";
 
     $sql = "SELECT LastName, FirstName FROM Users";
     $result = $conn->query($sql);
-    if ($result && $result->num_rows > 0) {
+
+    if (!$result) {
+        throw new Exception("Query failed: " . $conn->error);
+    }
+
+    if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
-            print $row["FirstName"] . " " . $row["LastName"] . "<br>";
+            print htmlspecialchars($row["FirstName"]) . " " . htmlspecialchars($row["LastName"]) . "<br>";
         }
     } else {
-        echo "No result found!<br>";
+        echo "No users found in the database<br>";
     }
+
+    $conn->close();
+
+} catch (Exception $e) {
+    echo "Error: " . htmlspecialchars($e->getMessage()) . "<br>";
+    echo "Debug info:<br>";
+    echo "PHP version: " . phpversion() . "<br>";
+    echo "MySQL client info: " . mysqli_get_client_info() . "<br>";
+
+    if (isset($conn)) {
+        echo "MySQL server info: " . $conn->server_info . "<br>";
+        $conn->close();
+    }
+    exit(1);
+}
 ?>
 </body>
 </html>
