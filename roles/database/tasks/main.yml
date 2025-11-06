@@ -46,8 +46,8 @@
   tags: [db]
 
 - name: Create Users table
+- name: Create Users table
   community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
     login_db: "{{ db_name }}"
     query: |
       CREATE TABLE IF NOT EXISTS Users (
@@ -55,6 +55,12 @@
         FirstName VARCHAR(50),
         LastName VARCHAR(50)
       );
+  tags: [db]
+
+- name: Insert initial users data
+  community.mysql.mysql_query:
+    login_db: "{{ db_name }}"
+    query: |
       INSERT IGNORE INTO Users (FirstName, LastName) VALUES 
         ('John', 'Doe'),
         ('Jane', 'Smith'),
