@@ -1,10 +1,8 @@
+---
 - name: Infra AWS Web Dev Lab
   hosts: localhost
-  connection: local
-  gather_facts: no
   roles:
-    - role: infra
-      tags: [infra]
+    - infra
 
 - name: Refresh inventory to ensure new instances are available
   hosts: localhost
@@ -13,97 +11,54 @@
     - name: Wait for AWS API consistency
       pause:
         seconds: 15
-      when: infra_state == "present"
-      tags: [infra]
-
     - name: Refresh inventory
       meta: refresh_inventory
-      tags: [infra]
 
 - name: Configure Database servers
   hosts: tag_Role_DB
-  become: yes
   gather_facts: no
   vars:
-    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip }}"
+    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}"
   pre_tasks:
     - name: Wait for bastion to be available
       wait_for:
         host: "{{ bastion_host }}"
         port: 22
         timeout: 300
-        connect_timeout: 5
+        state: started
       delegate_to: localhost
-      become: no
-      register: bastion_wait
-      until: bastion_wait is success
-      retries: 30
-      delay: 10
 
-    - name: Ensure SSH connection through bastion works
+    - name: Wait for DB instance SSH to be available through bastion
       wait_for:
         host: "{{ ansible_host }}"
         port: 22
         timeout: 300
-        connect_timeout: 5
-      delegate_to: localhost
+        state: started
+      delegate_to: "{{ bastion_host }}"
 
-    - name: Test SSH connection through bastion
-      command: "hostname"
-      changed_when: false
-      register: hostname_test
-
-    - name: Gather facts
-      setup:
   roles:
-    - role: database
-      tags: [db]
-    - role: phpmyadmin
-      tags: [phpmyadmin]
+    - database
 
 - name: Configure Web servers
   hosts: tag_Role_Web
-  become: yes
   gather_facts: no
   vars:
-    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip }}"
+    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}"
   pre_tasks:
-    - name: Wait for bastion to be available
-      wait_for:
-        host: "{{ bastion_host }}"
-        port: 22
-        timeout: 300
-      delegate_to: localhost
-      become: no
-
     - name: Wait for Web instance SSH to be available through bastion
       wait_for:
         host: "{{ ansible_host }}"
         port: 22
         timeout: 300
-        search_regex: OpenSSH
-      vars:
-        ansible_connection: ssh
-        ansible_user: admin
-        ansible_host: "{{ hostvars[inventory_hostname].private_ip_address }}"
-        ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
+        state: started
       delegate_to: "{{ bastion_host }}"
 
-    - name: Test SSH connection through bastion
-      command: "hostname"
-      changed_when: false
-      register: hostname_test
-
-    - name: Gather facts
-      setup:
   roles:
-    - role: webserver
-      tags: [web]
+    - webserver
+    - phpmyadmin
 
 - name: Configure Bastion servers
   hosts: tag_Role_Bastion
-  become: yes
-  gather_facts: yes
+  gather_facts: no
   roles:
-    - role: bastion
-      tags: [bastion]
+    - bastion
