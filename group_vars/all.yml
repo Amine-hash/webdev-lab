@@ -14,10 +14,15 @@ webdev_key_name: "vockey"
 ansible_user: admin
 ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
 ansible_ssh_common_args: >-
-  -o StrictHostKeyChecking=no
-  -o UserKnownHostsFile=/dev/null
-  -o ForwardAgent=yes
+  -o StrictHostKeyChecking=no 
+  -o UserKnownHostsFile=/dev/null 
+  -o ForwardAgent=yes 
   -o BatchMode=yes
+  -o ConnectTimeout=60
+  -o ServerAliveInterval=30
+  -o ControlMaster=auto
+  -o ControlPath=/tmp/ansible-ssh-%h-%p-%r
+  -o ControlPersist=15m
 
 # Nom du Security Group pour le lab
 webdev_sg_name: "webdev-lab-sg"
