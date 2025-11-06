@@ -1,2 +1,9 @@
 ---
-# La configuration SSH est gérée dans inventory_aws_ec2.yml via compose
+ansible_ssh_common_args: >-
+  -o StrictHostKeyChecking=no 
+  -o UserKnownHostsFile=/dev/null 
+  -o ForwardAgent=yes 
+  -o BatchMode=yes
+  -o ConnectTimeout=60
+  -o ServerAliveInterval=30
+  -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -q {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"

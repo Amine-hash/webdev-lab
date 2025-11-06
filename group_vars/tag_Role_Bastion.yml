@@ -1,4 +1,6 @@
 ---
-bastion_user: "admin"
-ansible_ssh_common_args: ""
+ansible_ssh_common_args: >-
+  -o StrictHostKeyChecking=no 
+  -o UserKnownHostsFile=/dev/null 
+  -o ForwardAgent=yes
 

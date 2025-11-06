@@ -9,45 +9,6 @@ filters:
 strict: no
 hostnames:
   - private-dns-name
-  - tag:Name
-  - private-ip-address
-
-keyed_groups:
-  - key: tags.Role
-    prefix: tag_Role_
-    separator: ''
 
 compose:
-  ansible_host: >-
-    {%- if tags.Role == 'Bastion' -%}
-    {{ public_ip_address }}
-    {%- else -%}
-    {{ private_ip_address }}
-    {%- endif -%}
-  public_ip_address: >-
-    {{ public_ip_address | default('') }}
-  private_ip_address: >-
-    {{ private_ip_address | default('') }}
-  ansible_user: admin
-  ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
-  ansible_ssh_common_args: >-
-    -o StrictHostKeyChecking=no
-    -o UserKnownHostsFile=/dev/null
-    -o ForwardAgent=yes
-    -o BatchMode=yes
-    -o ConnectTimeout=60
-    -o ServerAliveInterval=30
-    -o TCPKeepAlive=yes
-    -o ControlMaster=auto
-    -o ControlPath=/tmp/ansible-ssh-%h-%p-%r
-    -o ControlPersist=15m
-    {%- if tags.Role != 'Bastion' -%}
-    -o ProxyCommand="ssh -W %h:%p admin@{{ hostvars[groups['tag_Role_Bastion'][0]]['ansible_host'] }}"
-    {%- endif -%}
-
-  # Normalized variables for the playbook
-  public_ip: public_ip_address
-  private_ip: private_ip_address
-  instance_id: instance_id
-  instance_name: tags.Name
-  instance_role: tags.Role
+  ansible_host: private_ip_address

@@ -26,7 +26,14 @@ ansible_user: admin
 ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
 
 # SSH ProxyCommand configuration
-ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ForwardAgent=yes -o BatchMode=yes -o ConnectTimeout=60 -o ServerAliveInterval=30'
+ansible_ssh_common_args: >-
+  -o StrictHostKeyChecking=no 
+  -o UserKnownHostsFile=/dev/null 
+  -o ForwardAgent=yes 
+  -o BatchMode=yes
+  -o ConnectTimeout=60
+  -o ServerAliveInterval=30
+  -o ProxyCommand="ssh -W %h:%p -i {{ ansible_ssh_private_key_file }} {{ ansible_user }}@$(aws ec2 describe-instances --filters 'Name=tag:Role,Values=Bastion' 'Name=instance-state-name,Values=running' --query 'Reservations[].Instances[].PublicIpAddress' --output text)"
 
 # Configuration Base de données
 db_name: "Test1"
