@@ -15,7 +15,11 @@ keyed_groups:
     prefix: tag_Role
 
 compose:
-  ansible_host: |
-    public_ip_address if tags.get('Role') == 'Bastion' else private_ip_address
-  public_ip_address: public_ip_address
-  private_ip_address: private_ip_address
+  ansible_host: >-
+    {%- if tags.Role == 'Bastion' -%}
+    {{ public_ip_address }}
+    {%- else -%}
+    {{ private_ip_address }}
+    {%- endif -%}
+  public_ip_address: '{{ public_ip_address }}'
+  private_ip_address: '{{ private_ip_address }}'
