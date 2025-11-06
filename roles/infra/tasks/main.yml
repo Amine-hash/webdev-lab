@@ -40,10 +40,21 @@
         group_id: "{{ bastion_sg_id }}"
         rule_desc: "Allow SSH only from Bastion"
     rules_egress:
-      - proto: -1
-        from_port: -1
-        to_port: -1
+      - proto: tcp
+        from_port: 80
+        to_port: 80
         cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow HTTP outbound"
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow HTTPS outbound"
+      - proto: tcp
+        from_port: 3306
+        to_port: 3306
+        cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow MySQL to DB servers"
   register: web_sg
   when: infra_state == "present"
 
