@@ -1,17 +1,13 @@
-- name: Check Apache installation status
-  ansible.builtin.stat:
-    path: /usr/sbin/apache2
-  register: apache_installed
-  tags: [web]
-
+---
+# Install and configure Apache web server
 - name: Update APT and upgrade system (Web)
   ansible.builtin.apt:
     update_cache: yes
     upgrade: dist
-    cache_valid_time: 3600  # Add cache validity to avoid unnecessary updates
+    cache_valid_time: 3600
   tags: [web]
 
-- name: Install Apache, PHP, DB client and lynx
+- name: Install Apache, PHP, and required packages
   ansible.builtin.apt:
     name:
       - apache2
@@ -26,40 +22,50 @@
     state: present
     update_cache: yes
     cache_valid_time: 3600
-    dpkg_options: 'force-confold,force-confdef'
-    install_recommends: yes
-  register: packages_installed
+    dpkg_options: "force-confold,force-confdef"
   tags: [web]
 
-- name: Enable mod_headers for Apache
+# Ensure headers module is available and enabled
+- name: Install headers module
+  ansible.builtin.apt:
+    name: apache2
+    state: present
+  tags: [web]
+
+- name: Remove old security headers from security.conf
+  ansible.builtin.lineinfile:
+    path: /etc/apache2/conf-enabled/security.conf
+    regexp: '^(\s)*Header.*$'
+    state: absent
+  notify: restart apache
+  tags: [web]
+
+- name: Enable headers module
   community.general.apache2_module:
     name: headers
     state: present
-  tags: [web]
-
-- name: Enable mod_rewrite for Apache
-  community.general.apache2_module:
-    name: rewrite
-    state: present
   notify: restart apache
   tags: [web]
 
-- name: Get list of enabled Apache modules
-  ansible.builtin.command: apache2ctl -M
-  register: enabled_modules
-  changed_when: false
-  tags: [web]
-
-- name: Enable required Apache modules
-  apache2_module:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - php
-    - rewrite
+- name: Copy security headers configuration
+  ansible.builtin.copy:
+    src: security-headers.conf
+    dest: /etc/apache2/conf-available/security-headers.conf
+    owner: root
+    group: root
+    mode: '0644'
   notify: restart apache
   tags: [web]
 
+- name: Enable security headers configuration
+  ansible.builtin.file:
+    src: /etc/apache2/conf-available/security-headers.conf
+    dest: /etc/apache2/conf-enabled/security-headers.conf
+    state: link
+  notify: restart apache
+  tags: [web]
+
+# Rest of the web server configuration
 - name: Ensure /var/www/html exists with correct permissions
   ansible.builtin.file:
     path: /var/www/html
@@ -76,7 +82,7 @@
     owner: "{{ web_user }}"
     group: "{{ web_group }}"
     mode: '0644'
-    force: no  # Ne pas écraser si identique
+  notify: restart apache
   tags: [web]
 
 - name: Deploy table dump script
@@ -86,7 +92,7 @@
     owner: "{{ web_user }}"
     group: "{{ web_group }}"
     mode: '0644'
-    force: no  # Ne pas écraser si identique
+  notify: restart apache
   tags: [web]
 
 - name: Deploy index page
@@ -96,14 +102,7 @@
     owner: "{{ web_user }}"
     group: "{{ web_group }}"
     mode: '0644'
-    force: no  # Ne pas écraser si identique
-  tags: [web]
-
-- name: Ensure Apache is started and enabled
-  ansible.builtin.service:
-    name: apache2
-    state: started
-    enabled: yes
+  notify: restart apache
   tags: [web]
 
 - name: Validate Apache configuration
@@ -112,56 +111,11 @@
   register: apache_config_test
   tags: [web]
 
-- name: Add security headers to Apache configuration
-  ansible.builtin.blockinfile:
-    path: /etc/apache2/conf-available/security.conf
-    block: |
-      Header set X-Content-Type-Options "nosniff"
-      Header set X-Frame-Options "SAMEORIGIN"
-      Header set X-XSS-Protection "1; mode=block"
-      Header set Content-Security-Policy "default-src 'self'"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - SECURITY HEADERS"
-  notify: reload apache
-  tags: [web]
-
-- name: Enable security configuration
-  ansible.builtin.command: a2enconf security
-  register: enable_security
-  changed_when: enable_security.rc == 0
-  notify: reload apache
-  tags: [web]
-
-- name: Remove old security headers from security.conf
-  ansible.builtin.lineinfile:
-    path: /etc/apache2/conf-enabled/security.conf
-    regexp: '^(\s)*Header.*$'
-    state: absent
-  notify: restart apache
-  tags: [web]
-
-- name: Configure Apache security headers
-  ansible.builtin.blockinfile:
-    path: /etc/apache2/conf-available/security-headers.conf
-    create: yes
-    block: |
-      <IfModule mod_headers.c>
-          Header set X-Content-Type-Options "nosniff"
-          Header set X-Frame-Options "SAMEORIGIN"
-          Header set X-XSS-Protection "1; mode=block"
-          Header set Content-Security-Policy "default-src 'self'"
-      </IfModule>
-    owner: root
-    group: root
-    mode: '0644'
-  notify: restart apache
-  tags: [web]
-
-- name: Enable security headers configuration
-  ansible.builtin.file:
-    src: /etc/apache2/conf-available/security-headers.conf
-    dest: /etc/apache2/conf-enabled/security-headers.conf
-    state: link
-  notify: restart apache
+- name: Ensure Apache is running and enabled
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: yes
   tags: [web]
 
 - name: Check database connectivity
@@ -174,9 +128,4 @@
     query: "SELECT 1"
   register: db_check
   ignore_errors: yes
-  tags: [web]
-
-- name: Display database connectivity status
-  debug:
-    msg: "Database connection {{ 'succeeded' if db_check.failed is not defined else 'failed: ' + db_check.msg }}"
   tags: [web]
