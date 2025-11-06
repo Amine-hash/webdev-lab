@@ -5,8 +5,15 @@
   register: apache_restart
   ignore_errors: yes
 
+- name: reload apache
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  register: apache_reload
+  ignore_errors: yes
+
 - name: check apache error
   ansible.builtin.command: systemctl status apache2
-  when: apache_restart is failed
+  when: apache_restart is failed or apache_reload is failed
   register: apache_status
   changed_when: false

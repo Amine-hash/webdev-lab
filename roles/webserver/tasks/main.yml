@@ -22,6 +22,7 @@
       - apache2-utils
       - apache2-bin
       - python3-pymysql
+      - apache2-headers
     state: present
     update_cache: yes
     cache_valid_time: 3600
@@ -43,6 +44,7 @@
   with_items:
     - php
     - rewrite
+    - headers
   notify: restart apache
   when: "item not in enabled_modules.stdout"
   tags: [web]
@@ -108,6 +110,13 @@
       Header set X-XSS-Protection "1; mode=block"
       Header set Content-Security-Policy "default-src 'self'"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - SECURITY HEADERS"
+  notify: reload apache
+  tags: [web]
+
+- name: Enable security configuration
+  ansible.builtin.command: a2enconf security
+  register: enable_security
+  changed_when: enable_security.rc == 0
   notify: reload apache
   tags: [web]
 
