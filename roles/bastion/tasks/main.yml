@@ -62,3 +62,30 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
   tags: [bastion]
+
+- name: Ensure .ssh directory exists on bastion
+  ansible.builtin.file:
+    path: /home/admin/.ssh
+    state: directory
+    mode: '0700'
+    owner: admin
+    group: admin
+  tags: [bastion]
+
+- name: Copy SSH private key to bastion
+  ansible.builtin.copy:
+    src: "{{ ansible_ssh_private_key_file }}"
+    dest: /home/admin/.ssh/labsuser.pem
+    mode: '0600'
+    owner: admin
+    group: admin
+  tags: [bastion]
+
+- name: Configure SSH client for proxy access
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: /home/admin/.ssh/config
+    mode: '0600'
+    owner: admin
+    group: admin
+  tags: [bastion]

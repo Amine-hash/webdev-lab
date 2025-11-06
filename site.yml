@@ -15,6 +15,13 @@
     - name: Refresh inventory
       meta: refresh_inventory
 
+- name: Configure Bastion host
+  hosts: tag_Role_Bastion
+  become: yes
+  gather_facts: yes  # Important d'avoir les facts pour la config SSH
+  roles:
+    - bastion
+
 - name: Configure Database servers
   hosts: tag_Role_DB
   become: yes
@@ -28,10 +35,3 @@
   gather_facts: yes  # Important d'avoir les facts pour la config réseau
   roles:
     - webserver
-
-- name: Configure Bastion servers
-  hosts: tag_Role_Bastion
-  become: yes
-  gather_facts: yes  # Important d'avoir les facts pour la config SSH
-  roles:
-    - bastion
