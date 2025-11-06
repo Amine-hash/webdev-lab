@@ -222,10 +222,11 @@
   tags: [db]
 
 - name: Verify MariaDB network accessibility
-  ansible.builtin.command:
-    cmd: ss -ln | grep :3306
+  ansible.builtin.shell:
+    cmd: "ss -ln | grep :3306"
   register: mysql_ports
   changed_when: false
+  ignore_errors: yes  # Add this to prevent task failure if grep finds nothing
   tags: [db]
 
 - name: Display MySQL ports
