@@ -60,6 +60,11 @@
   register: web_sg
   when: infra_state == "present"
 
+- name: Set web_sg_id fact
+  ansible.builtin.set_fact:
+    web_sg_id: "{{ web_sg.group_id }}"
+  when: infra_state == "present" and web_sg.group_id is defined
+
 - name: Create DB security group
   amazon.aws.ec2_security_group:
     name: "{{ db_sg_name }}"
@@ -92,6 +97,11 @@
         rule_desc: "Allow HTTPS outbound"
   register: db_sg
   when: infra_state == "present"
+
+- name: Set db_sg_id fact
+  ansible.builtin.set_fact:
+    db_sg_id: "{{ db_sg.group_id }}"
+  when: infra_state == "present" and db_sg.group_id is defined
 
 # Instance creation
 - name: Launch instances
