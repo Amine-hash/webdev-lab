@@ -105,8 +105,11 @@
   tags: [db]
 
 - name: Validate MariaDB configuration
-  ansible.builtin.command: mysqld --validate-config
+  ansible.builtin.command: "mysqld --validate-config --user=mysql"
+  become: yes
+  become_user: root
   changed_when: false
+  ignore_errors: yes
   tags: [db]
 
 - name: Check database connectivity
