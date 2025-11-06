@@ -14,7 +14,6 @@
       - lynx
       - apache2-utils
       - apache2-bin
-      - libapache2-mod-headers  # Ajout du module headers
     state: present
   tags: [web]
 
