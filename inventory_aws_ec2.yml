@@ -9,7 +9,6 @@ filters:
 strict: no
 hostnames:
   - private-ip-address
-  - public-ip-address
   - tag:Name
   - private-dns-name
 
@@ -19,7 +18,7 @@ keyed_groups:
     separator: ''
 
 compose:
-  # Définition de l'hôte principal pour SSH
+  # Configuration des hôtes
   ansible_host: >-
     {%- if tags.Role == "Bastion" -%}
     {{- public_ip_address -}}
@@ -31,31 +30,26 @@ compose:
   ansible_user: admin
   ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
 
-  # Configuration SSH pour le bastion
+  # Configuration SSH de base
   ansible_ssh_common_args: >-
     {%- if tags.Role != "Bastion" -%}
     -o StrictHostKeyChecking=no 
     -o UserKnownHostsFile=/dev/null 
-    -o ProxyCommand="ssh -q -W %h:%p -i /home/admin/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@{{ groups['tag_Role_Bastion'] | map('extract', hostvars) | selectattr('public_ip_address', 'defined') | map(attribute='public_ip_address') | first }}"
+    -o ForwardAgent=yes
+    -o ServerAliveInterval=60
+    -o ControlMaster=auto 
+    -o ControlPersist=30m
+    -o ProxyCommand="ssh -q -W %h:%p -i /home/admin/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@{{ groups['tag_Role_Bastion'][0] }}"
     {%- endif -%}
 
-  # Configuration supplémentaire pour le bastion
-  ansible_ssh_extra_args: >-
-    {%- if tags.Role == "Bastion" -%}
-    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
-    {%- endif -%}
+  # Variables d'environnement
+  bastion_public_ip: "{{ public_ip_address if tags.Role == 'Bastion' else '' }}"
+  instance_private_ip: "{{ private_ip_address }}"
+  instance_id: "{{ instance_id }}"
+  instance_state: "{{ state.name }}"
+  instance_type: "{{ instance_type }}"
 
-  # Variables pour le bastion
-  bastion_public_ip: >-
-    {%- if tags.Role == "Bastion" -%}
-    {{- public_ip_address -}}
-    {%- endif -%}
-
-  # Variables pour les hôtes internes
-  private_ip: "{{ private_ip_address }}"
-  ansible_ssh_host: "{{ private_ip_address }}"
-
-  # Variables de débogage
-  public_ip_address: public_ip_address
-  private_ip_address: private_ip_address
-  instance_id: instance_id
+  # Tags importants
+  project_tag: "{{ tags.Project }}"
+  role_tag: "{{ tags.Role }}"
+  name_tag: "{{ tags.Name }}"

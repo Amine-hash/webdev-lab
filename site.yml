@@ -25,21 +25,35 @@
   become: yes
   gather_facts: no
   vars:
+    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
     ansible_ssh_common_args: >-
       -o StrictHostKeyChecking=no 
       -o UserKnownHostsFile=/dev/null 
-      -o ProxyCommand="ssh -q -W %h:%p -i {{ ansible_ssh_private_key_file }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
+      -o ForwardAgent=yes
+      -o ControlMaster=auto 
+      -o ControlPersist=30m
+      -o ProxyCommand="ssh -W %h:%p -i /home/admin/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@{{ bastion_host }}"
   pre_tasks:
-    - name: Wait for SSH to become available on DB server
+    - name: Wait for bastion to be available
       wait_for:
-        host: "{{ hostvars[inventory_hostname].private_ip_address }}"
+        host: "{{ bastion_host }}"
         port: 22
         timeout: 300
-        connect_timeout: 5
-        delay: 10
+      delegate_to: localhost
+      become: no
+
+    - name: Wait for DB instance SSH to be available through bastion
+      wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: 300
         search_regex: OpenSSH
-      delegate_to: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
-      remote_user: "{{ ansible_user }}"
+      vars:
+        ansible_connection: ssh
+        ansible_user: admin
+        ansible_host: "{{ hostvars[inventory_hostname].private_ip_address }}"
+        ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
+      delegate_to: "{{ bastion_host }}"
 
     - name: Test SSH connection through bastion
       command: "hostname"
@@ -59,21 +73,35 @@
   become: yes
   gather_facts: no
   vars:
+    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
     ansible_ssh_common_args: >-
       -o StrictHostKeyChecking=no 
       -o UserKnownHostsFile=/dev/null 
-      -o ProxyCommand="ssh -q -W %h:%p -i {{ ansible_ssh_private_key_file }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
+      -o ForwardAgent=yes
+      -o ControlMaster=auto 
+      -o ControlPersist=30m
+      -o ProxyCommand="ssh -W %h:%p -i /home/admin/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@{{ bastion_host }}"
   pre_tasks:
-    - name: Wait for SSH to become available on Web server
+    - name: Wait for bastion to be available
       wait_for:
-        host: "{{ hostvars[inventory_hostname].private_ip_address }}"
+        host: "{{ bastion_host }}"
         port: 22
         timeout: 300
-        connect_timeout: 5
-        delay: 10
+      delegate_to: localhost
+      become: no
+
+    - name: Wait for Web instance SSH to be available through bastion
+      wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: 300
         search_regex: OpenSSH
-      delegate_to: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
-      remote_user: "{{ ansible_user }}"
+      vars:
+        ansible_connection: ssh
+        ansible_user: admin
+        ansible_host: "{{ hostvars[inventory_hostname].private_ip_address }}"
+        ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
+      delegate_to: "{{ bastion_host }}"
 
     - name: Test SSH connection through bastion
       command: "hostname"
