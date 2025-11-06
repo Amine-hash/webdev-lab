@@ -30,6 +30,11 @@
       pause:
         seconds: 10
       when: "'tag_Role_Bastion' in groups"
+    - name: Pause to let AWS infrastructure settle
+      pause:
+        seconds: 5
+      when: "'tag_Role_Bastion' in groups"
+
     - name: Clear dynamic inventory cache
       ansible.builtin.file:
         path: ~/.ansible/tmp/ansible-ec2-*.cache

@@ -3,7 +3,7 @@
 - name: Update apt cache and upgrade packages
   ansible.builtin.apt:
     update_cache: yes
-    upgrade: safe
+    upgrade: dist
     cache_valid_time: 3600  # Cache valide pendant 1h
   tags: [bastion]
 
@@ -20,6 +20,9 @@
       - iputils-ping
       - tree
       - bash-completion
+      - openssh-server
+      - python3-pip
+      - python3-boto3
     state: present
     install_recommends: yes
   tags: [bastion]
@@ -30,12 +33,12 @@
     path: /etc/ssh/sshd_config
     regexp: "{{ item.regexp }}"
     line: "{{ item.line }}"
-    backup: no  # Pas besoin de backup à chaque fois
-    create: yes
+    state: present
   loop:
     - { regexp: '^#?PermitRootLogin',        line: 'PermitRootLogin no' }
     - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
     - { regexp: '^#?PubkeyAuthentication',   line: 'PubkeyAuthentication yes' }
+    - { regexp: '^#?AllowAgentForwarding',   line: 'AllowAgentForwarding yes' }
   notify: restart ssh
   tags: [bastion]
 
@@ -63,7 +66,7 @@
     mode: '0600'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    force: no  # Ne pas écraser si le fichier existe déjà avec le bon contenu
+    force: yes  # La clé doit toujours être à jour
   tags: [bastion]
 
 - name: Configure SSH client for proxy access
@@ -73,6 +76,6 @@
     mode: '0600'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    force: no  # Ne pas écraser si le fichier existe déjà avec le bon contenu
+    force: no  # Ne pas écraser si identique
   notify: restart ssh
   tags: [bastion]

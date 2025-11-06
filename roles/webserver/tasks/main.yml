@@ -1,3 +1,9 @@
+- name: Check Apache installation status
+  ansible.builtin.stat:
+    path: /usr/sbin/apache2
+  register: apache_installed
+  tags: [web]
+
 - name: Update APT and upgrade system (Web)
   ansible.builtin.apt:
     update_cache: yes
@@ -5,18 +11,31 @@
     cache_valid_time: 3600  # Add cache validity to avoid unnecessary updates
   tags: [web]
 
-- name: Install Apache, PHP, DB client and lynx
+- name: Install Apache and PHP packages
   ansible.builtin.apt:
     name:
       - apache2
       - php
       - php-mysql
+      - php-mysqli
+      - php-pdo
       - mariadb-client
       - lynx
       - apache2-utils
       - apache2-bin
       - libapache2-mod-php
     state: present
+    update_cache: yes
+    cache_valid_time: 3600
+    dpkg_options: 'force-confold,force-confdef'
+    install_recommends: yes
+  register: packages_installed
+  tags: [web]
+
+- name: Get list of enabled Apache modules
+  ansible.builtin.command: apache2ctl -M
+  register: enabled_modules
+  changed_when: false
   tags: [web]
 
 - name: Enable required Apache modules
@@ -24,9 +43,49 @@
     name: "{{ item }}"
     state: present
   with_items:
-    - headers
     - php
+    - rewrite
   notify: restart apache
+  when: "item not in enabled_modules.stdout"
+  tags: [web]
+
+- name: Ensure /var/www/html exists with correct permissions
+  ansible.builtin.file:
+    path: /var/www/html
+    state: directory
+    owner: "{{ web_user }}"
+    group: "{{ web_group }}"
+    mode: '0755'
+  tags: [web]
+
+- name: Deploy PHP info page
+  ansible.builtin.template:
+    src: info.php.j2
+    dest: /var/www/html/info.php
+    owner: "{{ web_user }}"
+    group: "{{ web_group }}"
+    mode: '0644'
+    force: no  # Ne pas écraser si identique
+  tags: [web]
+
+- name: Deploy table dump script
+  ansible.builtin.template:
+    src: dump.table.php.j2
+    dest: /var/www/html/dump.table.php
+    owner: "{{ web_user }}"
+    group: "{{ web_group }}"
+    mode: '0644'
+    force: no  # Ne pas écraser si identique
+  tags: [web]
+
+- name: Deploy index page
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    owner: "{{ web_user }}"
+    group: "{{ web_group }}"
+    mode: '0644'
+    force: no  # Ne pas écraser si identique
   tags: [web]
 
 - name: Ensure Apache is started and enabled
@@ -36,51 +95,10 @@
     enabled: yes
   tags: [web]
 
-- name: Ensure /var/www/html exists with correct permissions
-  ansible.builtin.file:
-    path: /var/www/html
-    state: directory
-    owner: www-data
-    group: www-data
-    mode: '0755'
-  tags: [web]
-
-- name: Copy web files
-  ansible.builtin.template:
-    src: "{{ item }}"
-    dest: "/var/www/html/{{ item | basename | regex_replace('\\.j2$', '') }}"
-    owner: www-data
-    group: www-data
-    mode: '0644'
-    force: no  # Ne pas écraser si le fichier existe déjà
-  with_items:
-    - index.html.j2
-    - info.php.j2
-    - dump.table.php.j2
-  notify: restart apache
-  tags: [web]
-
-- name: Compute DB host private IP (first DB server)
-  ansible.builtin.set_fact:
-    db_host: "{{ hostvars[groups['tag_Role_DB'][0]].ansible_default_ipv4.address }}"
-  when: groups['tag_Role_DB'] is defined and (groups['tag_Role_DB'] | length) > 0
-  tags: [web]
-
-# Les autorisations sont maintenant gérées par les tâches de déploiement ci-dessus
-- name: Ensure Apache user can write cache
-  ansible.builtin.file:
-    path: /var/cache/apache2
-    state: directory
-    owner: www-data
-    group: www-data
-    mode: "0755"
-    recurse: yes
-  tags: [web]
-
 - name: Validate Apache configuration
-  ansible.builtin.command: apache2ctl configtest
+  ansible.builtin.command: apache2ctl -t
   changed_when: false
-  notify: reload apache
+  register: apache_config_test
   tags: [web]
 
 - name: Add security headers to Apache configuration
