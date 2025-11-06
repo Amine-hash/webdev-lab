@@ -29,8 +29,6 @@
   notify: restart apache
   tags: [web]
 
-
-
 - name: Ensure Apache is started and enabled
   ansible.builtin.service:
     name: apache2
@@ -54,6 +52,7 @@
     owner: www-data
     group: www-data
     mode: '0644'
+    force: no  # Ne pas écraser si le fichier existe déjà
   with_items:
     - index.html.j2
     - info.php.j2

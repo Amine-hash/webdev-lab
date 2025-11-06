@@ -60,7 +60,8 @@
         LastName VARCHAR(50),
         UNIQUE KEY unique_user (FirstName, LastName)
       );
-      INSERT IGNORE INTO Users (FirstName, LastName) VALUES 
+      INSERT IGNORE INTO Users (FirstName, LastName) 
+      VALUES 
         ('John', 'Doe'),
         ('Jane', 'Smith'),
         ('Bob', 'Johnson');

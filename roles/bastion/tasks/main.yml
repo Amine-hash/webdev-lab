@@ -4,6 +4,7 @@
   ansible.builtin.apt:
     update_cache: yes
     upgrade: safe
+    cache_valid_time: 3600  # Cache valide pendant 1h
   tags: [bastion]
 
 - name: Install admin tools on bastion
@@ -29,7 +30,7 @@
     path: /etc/ssh/sshd_config
     regexp: "{{ item.regexp }}"
     line: "{{ item.line }}"
-    backup: yes
+    backup: no  # Pas besoin de backup à chaque fois
     create: yes
   loop:
     - { regexp: '^#?PermitRootLogin',        line: 'PermitRootLogin no' }
@@ -62,7 +63,7 @@
     mode: '0600'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    force: no
+    force: no  # Ne pas écraser si le fichier existe déjà avec le bon contenu
   tags: [bastion]
 
 - name: Configure SSH client for proxy access
@@ -72,6 +73,6 @@
     mode: '0600'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    force: no
+    force: no  # Ne pas écraser si le fichier existe déjà avec le bon contenu
   notify: restart ssh
   tags: [bastion]
