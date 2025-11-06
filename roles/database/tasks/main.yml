@@ -124,3 +124,70 @@
   debug:
     var: db_version.query_result
   tags: [db]
+
+- name: Create MariaDB configuration
+  ansible.builtin.copy:
+    content: |
+      [mysqld]
+      bind-address = 0.0.0.0
+      character-set-server = utf8mb4
+      collation-server = utf8mb4_general_ci
+      
+      # Security
+      max_connections = 100
+      max_user_connections = 50
+      
+      # InnoDB tuning
+      innodb_buffer_pool_size = 128M
+      innodb_log_file_size = 32M
+      innodb_flush_log_at_trx_commit = 2
+      
+      # Allow remote connections
+      skip-name-resolve
+      
+      [client]
+      default-character-set = utf8mb4
+      
+      [mysql]
+      default-character-set = utf8mb4
+    dest: /etc/mysql/conf.d/custom.cnf
+    owner: mysql
+    group: mysql
+    mode: '0644'
+  notify: restart mariadb
+  tags: [db]
+
+- name: Set correct ownership for MySQL directory
+  ansible.builtin.file:
+    path: /var/lib/mysql
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0750'
+    recurse: yes
+  tags: [db]
+
+- name: Set correct ownership for MySQL socket directory
+  ansible.builtin.file:
+    path: /var/run/mysqld
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'
+  tags: [db]
+
+- name: Set correct ownership for MySQL files
+  ansible.builtin.file:
+    path: /etc/mysql
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0750'
+    recurse: yes
+  tags: [db]
+
+- name: Validate MariaDB configuration
+  ansible.builtin.command: mysqld --validate-config --user=mysql
+  register: mariadb_validate
+  changed_when: false
+  tags: [db]
