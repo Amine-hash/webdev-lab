@@ -117,6 +117,7 @@
           Project: "{{ project_tag }}"
           Role: Bastion
         wait: yes
+      register: bastion_instance
       when: not (existing_instances.instances | selectattr('tags.Role', 'equalto', 'Bastion') | list)
 
     - name: Create Web instance
@@ -132,6 +133,7 @@
           Project: "{{ project_tag }}"
           Role: Web
         wait: yes
+      register: web_instance
       when: not (existing_instances.instances | selectattr('tags.Role', 'equalto', 'Web') | list)
 
     - name: Create DB instance
@@ -147,23 +149,58 @@
           Project: "{{ project_tag }}"
           Role: DB
         wait: yes
+      register: db_instance
       when: not (existing_instances.instances | selectattr('tags.Role', 'equalto', 'DB') | list)
   when: infra_state == "present"
 
-- name: Set bastion_instance_id fact
+# Set instance IDs from created or existing instances
+- name: Set bastion_instance_id from existing instance
   ansible.builtin.set_fact:
-    bastion_instance_id: "{{ bastion_instance.instance_id }}"
-  when: infra_state == "present"
+    bastion_instance_id: "{{ existing_instances.instances | selectattr('tags.Role', 'equalto', 'Bastion') | map(attribute='instance_id') | first }}"
+  when:
+    - infra_state == "present"
+    - existing_instances.instances | selectattr('tags.Role', 'equalto', 'Bastion') | list | length > 0
 
-- name: Set web_instance_id fact
+- name: Set bastion_instance_id from newly created instance
   ansible.builtin.set_fact:
-    web_instance_id: "{{ web_instance.instance_id }}"
-  when: infra_state == "present"
+    bastion_instance_id: "{{ bastion_instance.instances[0].instance_id }}"
+  when:
+    - infra_state == "present"
+    - bastion_instance is defined
+    - bastion_instance.instances is defined
+    - bastion_instance.instances | length > 0
 
-- name: Set db_instance_id fact
+- name: Set web_instance_id from existing instance
   ansible.builtin.set_fact:
-    db_instance_id: "{{ db_instance.instance_id }}"
-  when: infra_state == "present"
+    web_instance_id: "{{ existing_instances.instances | selectattr('tags.Role', 'equalto', 'Web') | map(attribute='instance_id') | first }}"
+  when:
+    - infra_state == "present"
+    - existing_instances.instances | selectattr('tags.Role', 'equalto', 'Web') | list | length > 0
+
+- name: Set web_instance_id from newly created instance
+  ansible.builtin.set_fact:
+    web_instance_id: "{{ web_instance.instances[0].instance_id }}"
+  when:
+    - infra_state == "present"
+    - web_instance is defined
+    - web_instance.instances is defined
+    - web_instance.instances | length > 0
+
+- name: Set db_instance_id from existing instance
+  ansible.builtin.set_fact:
+    db_instance_id: "{{ existing_instances.instances | selectattr('tags.Role', 'equalto', 'DB') | map(attribute='instance_id') | first }}"
+  when:
+    - infra_state == "present"
+    - existing_instances.instances | selectattr('tags.Role', 'equalto', 'DB') | list | length > 0
+
+- name: Set db_instance_id from newly created instance
+  ansible.builtin.set_fact:
+    db_instance_id: "{{ db_instance.instances[0].instance_id }}"
+  when:
+    - infra_state == "present"
+    - db_instance is defined
+    - db_instance.instances is defined
+    - db_instance.instances | length > 0
 
 # ---- Key Pair ----
 
@@ -585,3 +622,5 @@
       register: db_instance
       when: (existing_db.instances | length == 0)
   when: infra_state == "present"
+
+# Ensure instances are accessible
