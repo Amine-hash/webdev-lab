@@ -12,7 +12,8 @@ webdev_key_name: "vockey"
 
 # Chemin vers la clé privée sur la machine Ansible
 ansible_user: admin
-ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
+ansible_ssh_private_key_file: "./labsuser.pem"
+ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 
 # Nom du Security Group pour le lab
 webdev_sg_name: "webdev-lab-sg"

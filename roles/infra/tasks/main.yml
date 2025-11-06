@@ -43,7 +43,7 @@
       - proto: tcp
         from_port: 3306
         to_port: 3306
-        cidr_ip: "0.0.0.0/0"
+        group_id: "{{ db_sg_id | default(omit) }}"
         rule_desc: "Allow MySQL to DB servers"
       - proto: tcp
         from_port: 80

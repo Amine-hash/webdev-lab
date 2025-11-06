@@ -18,24 +18,9 @@
   hosts: tag_Role_DB
   gather_facts: no
   vars:
-    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
-  pre_tasks:
-    - name: Wait for bastion to be available
-      wait_for:
-        host: "{{ bastion_host }}"
-        port: 22
-        timeout: 300
-        state: started
-      delegate_to: localhost
-
-    - name: Wait for DB instance SSH to be available through bastion
-      wait_for:
-        host: "{{ ansible_host }}"
-        port: 22
-        timeout: 300
-        state: started
-      delegate_to: "{{ bastion_host }}"
-
+    ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
+    ansible_user: admin
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="ssh -W %h:%p -i /home/admin/.ssh/labsuser.pem admin@{{ hostvars[groups[\"tag_Role_Bastion\"][0]].public_ip_address }}"'
   roles:
     - database
 
@@ -43,22 +28,18 @@
   hosts: tag_Role_Web
   gather_facts: no
   vars:
-    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
-  pre_tasks:
-    - name: Wait for Web instance SSH to be available through bastion
-      wait_for:
-        host: "{{ ansible_host }}"
-        port: 22
-        timeout: 300
-        state: started
-      delegate_to: "{{ bastion_host }}"
-
+    ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
+    ansible_user: admin
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="ssh -W %h:%p -i /home/admin/.ssh/labsuser.pem admin@{{ hostvars[groups[\"tag_Role_Bastion\"][0]].public_ip_address }}"'
   roles:
     - webserver
-    - phpmyadmin
 
 - name: Configure Bastion servers
   hosts: tag_Role_Bastion
   gather_facts: no
+  vars:
+    ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
+    ansible_user: admin
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
   roles:
     - bastion
