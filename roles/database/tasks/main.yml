@@ -104,12 +104,11 @@
     force: no  # Ne pas écraser si identique
   tags: [db]
 
-- name: Validate MariaDB configuration
-  ansible.builtin.command: "mysqld --validate-config --user=mysql"
-  become: yes
-  become_user: root
-  changed_when: false
-  ignore_errors: yes
+- name: Check MariaDB service status
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+  register: mariadb_status
   tags: [db]
 
 - name: Check database connectivity

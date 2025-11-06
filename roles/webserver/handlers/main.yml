@@ -2,8 +2,11 @@
   ansible.builtin.service:
     name: apache2
     state: restarted
+  register: apache_restart
+  ignore_errors: yes
 
-- name: reload apache
-  ansible.builtin.service:
-    name: apache2
-    state: reloaded
+- name: check apache error
+  ansible.builtin.command: systemctl status apache2
+  when: apache_restart is failed
+  register: apache_status
+  changed_when: false

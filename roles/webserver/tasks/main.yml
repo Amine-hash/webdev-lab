@@ -11,19 +11,17 @@
     cache_valid_time: 3600  # Add cache validity to avoid unnecessary updates
   tags: [web]
 
-- name: Install Apache and PHP packages
+- name: Install Apache, PHP, DB client and lynx
   ansible.builtin.apt:
     name:
       - apache2
       - php
       - php-mysql
-      - php-mysqli
-      - php-pdo
       - mariadb-client
       - lynx
       - apache2-utils
       - apache2-bin
-      - libapache2-mod-php
+      - python3-pymysql
     state: present
     update_cache: yes
     cache_valid_time: 3600
@@ -119,6 +117,7 @@
     login_user: "{{ db_user }}"
     login_password: "{{ db_password }}"
     login_db: "{{ db_name }}"
+    login_port: "{{ db_port }}"
     query: "SELECT 1"
   register: db_check
   ignore_errors: yes
