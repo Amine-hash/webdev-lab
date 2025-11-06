@@ -6,22 +6,18 @@
     - role: infra
       tags: [infra]
 
-- name: Prepare for server configuration
+- name: Refresh inventory to ensure new instances are available
   hosts: localhost
-  connection: local
   gather_facts: no
   tasks:
-    - name: Clear dynamic inventory cache again
-      ansible.builtin.file:
-        path: ~/.ansible/tmp/ansible-ec2-*.cache
-        state: absent
+    - name: Wait for AWS API consistency
+      pause:
+        seconds: 15
       when: infra_state == "present"
       tags: [infra]
 
-    - name: Wait another 30 seconds for AWS EC2 API to stabilize
-      ansible.builtin.pause:
-        seconds: 30
-      when: infra_state == "present"
+    - name: Refresh inventory
+      meta: refresh_inventory
       tags: [infra]
 
 - name: Configure Database servers

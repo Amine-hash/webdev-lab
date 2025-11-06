@@ -1,22 +1,25 @@
 plugin: aws_ec2
 regions:
   - us-east-1
+
+filters:
+  tag:Project: webdev-lab
+  instance-state-name: running
+
 keyed_groups:
-  - prefix: tag_Role_
-    key: tags['Role']
+  - key: tags.Role
+    prefix: tag_Role_
     separator: ''
+
 hostnames:
   - tag:Name
-  - private_ip_address
-  - public_ip_address
+  - private_dns_name
+  - public_dns_name
+
 compose:
   ansible_host: >-
     {%- if tags.Role == "Bastion" -%}
     {{ public_ip_address }}
     {%- else -%}
     {{ private_ip_address }}
-    {%- endif -%}
-  ansible_ssh_common_args: >-
-    {%- if tags.Role != "Bastion" -%}
-    '-o ProxyCommand="ssh -W %h:%p -i {{ lookup('env', 'HOME') }}/.ssh/vockey.pem admin@{{ groups['tag_Role_Bastion'][0] }}"'
     {%- endif -%}
