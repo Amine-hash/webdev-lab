@@ -39,16 +39,11 @@
         to_port: 22
         group_id: "{{ bastion_sg_id }}"
         rule_desc: "Allow SSH only from Bastion"
-      - proto: tcp
-        from_port: 3306
-        to_port: 3306
-        group_id: "{{ db_sg_id }}"
-        rule_desc: "Allow MySQL access to DB servers"
     rules_egress:
       - proto: tcp
         from_port: 3306
         to_port: 3306
-        group_id: "{{ db_sg_id }}"
+        cidr_ip: "0.0.0.0/0"
         rule_desc: "Allow MySQL to DB servers"
       - proto: tcp
         from_port: 80
@@ -68,7 +63,7 @@
     web_sg_id: "{{ web_sg.group_id }}"
   when: infra_state == "present"
 
-- name: Create DB security group
+- name: Create DB security group (initial)
   amazon.aws.ec2_security_group:
     name: "{{ db_sg_name }}"
     description: "DB SG for {{ project_tag }}"
@@ -77,25 +72,20 @@
     vpc_id: "{{ vpc_id | default(omit) }}"
     rules:
       - proto: tcp
-        from_port: 3306
-        to_port: 3306
-        group_id: "{{ web_sg_id }}"
-        rule_desc: "Allow MySQL from Web servers"
-      - proto: tcp
-        from_port: 3306
-        to_port: 3306
+        from_port: 22
+        to_port: 22
         group_id: "{{ bastion_sg_id }}"
-        rule_desc: "Allow MySQL from Bastion"
+        rule_desc: "Allow SSH from Bastion"
       - proto: tcp
         from_port: 80
         to_port: 80
         group_id: "{{ bastion_sg_id }}"
         rule_desc: "Allow phpMyAdmin access only from Bastion"
       - proto: tcp
-        from_port: 22
-        to_port: 22
+        from_port: 3306
+        to_port: 3306
         group_id: "{{ bastion_sg_id }}"
-        rule_desc: "Allow SSH from Bastion"
+        rule_desc: "Allow MySQL from Bastion"
     rules_egress:
       - proto: -1
         from_port: 0
@@ -268,3 +258,35 @@
     region: "{{ aws_region }}"
     state: absent
   when: infra_state == "absent"
+
+- name: Update DB security group with Web server access
+  amazon.aws.ec2_security_group:
+    name: "{{ db_sg_name }}"
+    description: "DB SG for {{ project_tag }}"
+    region: "{{ aws_region }}"
+    state: present
+    purge_rules: false
+    rules:
+      - proto: tcp
+        from_port: 3306
+        to_port: 3306
+        group_id: "{{ web_sg_id }}"
+        rule_desc: "Allow MySQL from Web servers"
+  register: db_sg_update
+  when: infra_state == "present"
+
+- name: Update Web security group with DB access
+  amazon.aws.ec2_security_group:
+    name: "{{ web_sg_name }}"
+    description: "Web SG for {{ project_tag }}"
+    region: "{{ aws_region }}"
+    state: present
+    purge_rules: false
+    rules:
+      - proto: tcp
+        from_port: 3306
+        to_port: 3306
+        group_id: "{{ db_sg_id }}"
+        rule_desc: "Allow MySQL access to DB servers"
+  register: web_sg_update
+  when: infra_state == "present"
