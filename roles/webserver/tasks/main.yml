@@ -129,3 +129,33 @@
   register: db_check
   ignore_errors: yes
   tags: [web]
+
+- name: Display database connectivity result
+  ansible.builtin.debug:
+    var: db_check
+  when: db_check is defined
+  tags: [web]
+
+- name: Ensure web server can connect to database
+  ansible.builtin.wait_for:
+    host: "{{ db_host }}"
+    port: "{{ db_port }}"
+    timeout: 30
+    state: started
+  register: db_port_check
+  tags: [web]
+
+- name: Test MySQL connectivity from command line
+  ansible.builtin.command:
+    cmd: "mysql -h {{ db_host }} -u {{ db_user }} -p'{{ db_password }}' -e 'SELECT 1;'"
+  register: mysql_test
+  changed_when: false
+  ignore_errors: yes
+  no_log: true
+  tags: [web]
+
+- name: Display MySQL test result
+  ansible.builtin.debug:
+    msg: "{{ mysql_test }}"
+  when: mysql_test is defined
+  tags: [web]
