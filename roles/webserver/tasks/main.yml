@@ -12,7 +12,17 @@
       - php-mysql
       - mariadb-client
       - lynx
+      - apache2-utils
+      - apache2-bin
+      - libapache2-mod-headers  # Ajout du module headers
     state: present
+  tags: [web]
+
+- name: Enable Apache headers module
+  apache2_module:
+    name: headers
+    state: present
+  notify: restart apache
   tags: [web]
 
 - name: Ensure Apache is started and enabled
