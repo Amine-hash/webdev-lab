@@ -13,7 +13,7 @@ project_tag: "webdev"
 # Access configuration
 ssh_cidr: "0.0.0.0/0"  # Allow SSH access from anywhere for demonstration
 web_http_cidr: "0.0.0.0/0"  # Allow HTTP access from anywhere
-webdev_key_name: "labsuser"
+webdev_key_name: "vockey"
 
 # Security group names
 bastion_sg_name: "webdev-bastion-sg"
