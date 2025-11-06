@@ -14,9 +14,11 @@
       - php
       - php-mysql
       - mariadb-client
+      - mysql-client
       - lynx
       - apache2-utils
       - apache2-bin
+      - python3-pymysql
       - python3-pymysql
       - libapache2-mod-php
     state: present
@@ -158,4 +160,43 @@
   ansible.builtin.debug:
     msg: "{{ mysql_test }}"
   when: mysql_test is defined
+  tags: [web]
+
+- name: Install netcat for connectivity testing
+  ansible.builtin.apt:
+    name: netcat-openbsd
+    state: present
+  tags: [web]
+
+- name: Test database connectivity with netcat
+  ansible.builtin.shell: |
+    nc -zv {{ hostvars[groups['tag_Role_DB'][0]]['private_ip'] }} 3306
+  register: nc_result
+  changed_when: false
+  ignore_errors: yes
+  tags: [web]
+
+- name: Display connection test result
+  ansible.builtin.debug:
+    var: nc_result
+  tags: [web]
+
+- name: Verify database write access
+  community.mysql.mysql_query:
+    login_host: "{{ db_host }}"
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_password }}"
+    login_db: "{{ db_name }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS test_connectivity (id INT);
+      INSERT INTO test_connectivity VALUES (1);
+      DROP TABLE test_connectivity;
+  register: db_write_test
+  ignore_errors: yes
+  tags: [web]
+
+- name: Display database write test result
+  ansible.builtin.debug:
+    var: db_write_test
+  when: db_write_test is defined
   tags: [web]

@@ -16,6 +16,7 @@
     name:
       - mariadb-server
       - python3-pymysql
+      - net-tools
     state: present
     update_cache: yes
     cache_valid_time: 3600
@@ -259,7 +260,7 @@
   tags: [db]
 
 - name: Verify MariaDB network accessibility
-  ansible.builtin.shell: "netstat -tuln | grep ':3306'"
+  ansible.builtin.shell: "ss -tuln | grep ':3306' || netstat -tuln | grep ':3306'"
   register: mysql_listening
   changed_when: false
   ignore_errors: yes
@@ -269,4 +270,38 @@
   ansible.builtin.debug:
     msg: "MySQL is listening on {{ mysql_listening.stdout }}"
   when: mysql_listening.rc == 0
+  tags: [db]
+
+- name: Grant remote access to database user
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    query: |
+      GRANT ALL ON *.* TO 'admin'@'%' IDENTIFIED BY '{{ db_password }}' WITH GRANT OPTION;
+      FLUSH PRIVILEGES;
+  tags: [db]
+  notify: restart mariadb
+
+- name: Ensure UFW is installed
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  tags: [db]
+
+- name: Allow MariaDB port in UFW
+  ansible.builtin.ufw:
+    rule: allow
+    port: 3306
+    proto: tcp
+  tags: [db]
+
+- name: Get UFW status
+  ansible.builtin.command: ufw status
+  register: ufw_status
+  changed_when: false
+  tags: [db]
+
+- name: Display UFW status
+  ansible.builtin.debug:
+    var: ufw_status.stdout_lines
   tags: [db]
