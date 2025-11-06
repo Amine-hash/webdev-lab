@@ -1,7 +1,7 @@
 # Région AWS
 aws_region: us-east-1
 
-# AMI Debian à utiliser (à adapter selon ton TP)
+# AMI Debian à utiliser
 debian_ami_id: "ami-0f9c27b471bdcd702"
 
 # Type d'instance pour tout le lab
@@ -10,10 +10,14 @@ instance_type: t3.micro
 # Nom de la clé AWS
 webdev_key_name: "vockey"
 
-# Chemin vers la clé privée sur la machine Ansible
+# Configuration SSH
 ansible_user: admin
-ansible_ssh_private_key_file: "./labsuser.pem"
-ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
+ansible_ssh_common_args: >-
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+  -o ForwardAgent=yes
+  -o BatchMode=yes
 
 # Nom du Security Group pour le lab
 webdev_sg_name: "webdev-lab-sg"
@@ -44,7 +48,7 @@ infra_state: "present"
 
 project_tag: "webdev-lab"
 
-# si tu utilises ces variables dans ton infra/role, tu peux aussi les définir ici
+# Noms des security groups
 bastion_sg_name: "{{ project_tag }}-bastion-sg"
 web_sg_name: "{{ project_tag }}-web-sg"
 db_sg_name: "{{ project_tag }}-db-sg"
