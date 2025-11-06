@@ -18,7 +18,7 @@
   hosts: tag_Role_DB
   gather_facts: no
   vars:
-    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}"
+    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
   pre_tasks:
     - name: Wait for bastion to be available
       wait_for:
@@ -43,7 +43,7 @@
   hosts: tag_Role_Web
   gather_facts: no
   vars:
-    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].ansible_host }}"
+    bastion_host: "{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"
   pre_tasks:
     - name: Wait for Web instance SSH to be available through bastion
       wait_for:
