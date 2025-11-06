@@ -12,6 +12,13 @@
     enabled: yes
   tags: [phpmyadmin]
 
+- name: Pull phpMyAdmin image
+  community.docker.docker_image:
+    name: phpmyadmin
+    source: pull
+    force_source: no
+  tags: [phpmyadmin]
+
 - name: Run phpMyAdmin container
   community.docker.docker_container:
     name: "{{ phpmyadmin_container_name }}"
@@ -19,7 +26,16 @@
     restart_policy: unless-stopped
     env:
       PMA_ARBITRARY: "1"
+      PMA_HOST: "localhost"
+      MYSQL_ROOT_PASSWORD: "{{ db_password }}"
+      UPLOAD_LIMIT: "64M"
     ports:
       - "80:80"
     state: started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
   tags: [phpmyadmin]

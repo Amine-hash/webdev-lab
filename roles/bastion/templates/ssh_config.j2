@@ -1,6 +1,20 @@
-Host *
+Host webdev-*
+    User {{ ansible_user }}
+    IdentityFile ~/.ssh/labsuser.pem
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
-    IdentityFile /home/{{ ansible_user }}/.ssh/{{ webdev_key_name }}.pem
-    User {{ ansible_user }}
 
+Host webdev-web
+    HostName {{ hostvars[groups['tag_Role_Web'][0]].private_ip_address }}
+    ProxyCommand none
+
+Host webdev-db
+    HostName {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}
+    ProxyCommand none
+
+# Configuration globale
+Host *
+    ServerAliveInterval 60
+    TCPKeepAlive yes
+    ForwardAgent no
+    GSSAPIAuthentication no

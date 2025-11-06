@@ -58,13 +58,25 @@
       );
   tags: [db]
 
+- name: Check if demo users exist
+  community.mysql.mysql_query:
+    login_user: "{{ db_user }}"
+    login_password: "{{ db_password }}"
+    login_db: "{{ db_name }}"
+    query: SELECT COUNT(*) as count FROM Users
+  register: users_count
+  tags: [db]
+
 - name: Insert demo users if table is empty
   community.mysql.mysql_query:
     login_user: "{{ db_user }}"
     login_password: "{{ db_password }}"
     login_db: "{{ db_name }}"
     query: |
-      INSERT INTO Users (LastName, FirstName)
-      SELECT 'Doe', 'John'
-      WHERE NOT EXISTS (SELECT 1 FROM Users);
+      INSERT INTO Users (LastName, FirstName) VALUES
+      ('Doe', 'John'),
+      ('Smith', 'Jane'),
+      ('Martin', 'Bob')
+  when: users_count.query_result[0][0].count == 0
+  tags: [db]
   tags: [db]

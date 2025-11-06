@@ -3,3 +3,12 @@
     name: apache2
     state: restarted
     enabled: yes
+
+- name: reload apache
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+
+- name: validate apache config
+  ansible.builtin.command: apache2ctl configtest
+  changed_when: false

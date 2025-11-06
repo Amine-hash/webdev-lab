@@ -19,31 +19,43 @@ keyed_groups:
     separator: ''
 
 compose:
+  # Définition de l'hôte principal pour SSH
   ansible_host: >-
     {%- if tags.Role == "Bastion" -%}
     {{- public_ip_address -}}
     {%- else -%}
     {{- private_ip_address -}}
     {%- endif -%}
+
+  # Configuration utilisateur commune
   ansible_user: admin
   ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
+
+  # Configuration SSH pour le bastion
   ansible_ssh_common_args: >-
     {%- if tags.Role != "Bastion" -%}
-    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -i /home/admin/.ssh/labsuser.pem admin@{{ groups['tag_Role_Bastion'] | map('extract', hostvars) | selectattr('public_ip_address', 'defined') | map(attribute='public_ip_address') | first }}"
+    -o StrictHostKeyChecking=no 
+    -o UserKnownHostsFile=/dev/null 
+    -o ProxyCommand="ssh -q -W %h:%p -i /home/admin/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@{{ groups['tag_Role_Bastion'] | map('extract', hostvars) | selectattr('public_ip_address', 'defined') | map(attribute='public_ip_address') | first }}"
     {%- endif -%}
-  # Variables pour le bastion
+
+  # Configuration supplémentaire pour le bastion
   ansible_ssh_extra_args: >-
     {%- if tags.Role == "Bastion" -%}
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
     {%- endif -%}
-  # Variables pour SSH via le bastion
-  ansible_ssh_host: >-
-    {%- if tags.Role != "Bastion" -%}
-    {{- private_ip_address -}}
-    {%- else -%}
+
+  # Variables pour le bastion
+  bastion_public_ip: >-
+    {%- if tags.Role == "Bastion" -%}
     {{- public_ip_address -}}
     {%- endif -%}
-  # Debug vars
+
+  # Variables pour les hôtes internes
+  private_ip: "{{ private_ip_address }}"
+  ansible_ssh_host: "{{ private_ip_address }}"
+
+  # Variables de débogage
   public_ip_address: public_ip_address
   private_ip_address: private_ip_address
   instance_id: instance_id

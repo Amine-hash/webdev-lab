@@ -27,7 +27,7 @@
   pre_tasks:
     - name: Wait for SSH to become available on DB server
       wait_for:
-        host: "{{ ansible_ssh_host | default(ansible_host) }}"
+        host: "{{ ansible_host }}"
         port: 22
         timeout: 300
         search_regex: OpenSSH
@@ -35,11 +35,16 @@
         ansible_connection: local
         ansible_python_interpreter: "{{ ansible_playbook_python }}"
 
-    - name: Gather facts after SSH is available
-      setup:
+    - name: Ensure we can connect via SSH through bastion
+      ping:
       vars:
         ansible_ssh_common_args: >-
-          -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -i {{ ansible_ssh_private_key_file }} admin@{{ groups['tag_Role_Bastion'] | map('extract', hostvars) | selectattr('public_ip_address', 'defined') | map(attribute='public_ip_address') | first }}"
+          -o StrictHostKeyChecking=no 
+          -o UserKnownHostsFile=/dev/null 
+          -o ProxyCommand="ssh -q -W %h:%p -i {{ ansible_ssh_private_key_file }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]]['public_ip_address'] }}"
+
+    - name: Gather facts
+      setup:
   roles:
     - role: database
       tags: [db]
@@ -49,7 +54,28 @@
 - name: Configure Web servers
   hosts: tag_Role_Web
   become: yes
-  gather_facts: yes
+  gather_facts: no
+  pre_tasks:
+    - name: Wait for SSH to become available on Web server
+      wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: 300
+        search_regex: OpenSSH
+      vars:
+        ansible_connection: local
+        ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+    - name: Ensure we can connect via SSH through bastion
+      ping:
+      vars:
+        ansible_ssh_common_args: >-
+          -o StrictHostKeyChecking=no 
+          -o UserKnownHostsFile=/dev/null 
+          -o ProxyCommand="ssh -q -W %h:%p -i {{ ansible_ssh_private_key_file }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]]['public_ip_address'] }}"
+
+    - name: Gather facts
+      setup:
   roles:
     - role: webserver
       tags: [web]
