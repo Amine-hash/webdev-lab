@@ -32,22 +32,13 @@
   register: packages_installed
   tags: [web]
 
-- name: Ensure required Apache modules are installed
-  ansible.builtin.apt:
-    name:
-      - libapache2-mod-headers
-      - libapache2-mod-php
-    state: present
-  register: modules_installed
-  tags: [web]
-
 - name: Get list of enabled Apache modules
   ansible.builtin.command: apache2ctl -M
   register: enabled_modules
   changed_when: false
   tags: [web]
 
-- name: Enable Apache modules
+- name: Enable required Apache modules
   apache2_module:
     name: "{{ item }}"
     state: present

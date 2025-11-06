@@ -125,6 +125,37 @@
     var: db_version.query_result
   tags: [db]
 
+- name: Stop MariaDB service before reconfiguration
+  ansible.builtin.service:
+    name: mariadb
+    state: stopped
+  tags: [db]
+
+- name: Clear any existing locks
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /var/lib/mysql/aria_log_control
+    - /var/run/mysqld/mysqld.pid
+    - /var/lib/mysql/mysql.sock
+    - /var/lib/mysql/ibdata1.lck
+  ignore_errors: yes
+  tags: [db]
+
+- name: Ensure MySQL directories have correct permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0750'
+  with_items:
+    - /var/lib/mysql
+    - /var/run/mysqld
+    - /var/log/mysql
+  tags: [db]
+
 - name: Create MariaDB configuration
   ansible.builtin.copy:
     content: |
@@ -133,17 +164,20 @@
       character-set-server = utf8mb4
       collation-server = utf8mb4_general_ci
       
-      # Security
+      # Performance & Security
       max_connections = 100
       max_user_connections = 50
+      skip-name-resolve
       
-      # InnoDB tuning
+      # InnoDB settings
       innodb_buffer_pool_size = 128M
       innodb_log_file_size = 32M
       innodb_flush_log_at_trx_commit = 2
+      innodb_file_per_table = 1
       
-      # Allow remote connections
-      skip-name-resolve
+      # Aria settings
+      aria_log_file_size = 32M
+      aria_log_purge_type = immediate
       
       [client]
       default-character-set = utf8mb4
@@ -157,37 +191,270 @@
   notify: restart mariadb
   tags: [db]
 
-- name: Set correct ownership for MySQL directory
-  ansible.builtin.file:
-    path: /var/lib/mysql
-    state: directory
-    owner: mysql
-    group: mysql
-    mode: '0750'
-    recurse: yes
+- name: Start and enable MariaDB
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: yes
   tags: [db]
 
-- name: Set correct ownership for MySQL socket directory
-  ansible.builtin.file:
-    path: /var/run/mysqld
-    state: directory
-    owner: mysql
-    group: mysql
-    mode: '0755'
+- name: Wait for MariaDB to be ready
+  ansible.builtin.wait_for:
+    path: /var/run/mysqld/mysqld.sock
+    state: present
+    timeout: 30
   tags: [db]
 
-- name: Set correct ownership for MySQL files
-  ansible.builtin.file:
-    path: /etc/mysql
-    state: directory
-    owner: mysql
-    group: mysql
-    mode: '0750'
-    recurse: yes
+- name: Create database
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+  register: db_created
   tags: [db]
 
-- name: Validate MariaDB configuration
-  ansible.builtin.command: mysqld --validate-config --user=mysql
-  register: mariadb_validate
+- name: Create database user with privileges
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL"
+    host: '%'
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+  register: user_created
+  tags: [db]
+
+- name: Create Users table
+  community.mysql.mysql_query:
+    login_db: "{{ db_name }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    query: |
+      CREATE TABLE IF NOT EXISTS Users (
+        ID INT PRIMARY KEY AUTO_INCREMENT,
+        FirstName VARCHAR(50),
+        LastName VARCHAR(50)
+      );
+  tags: [db]
+
+- name: Check if table is empty
+  community.mysql.mysql_query:
+    login_db: "{{ db_name }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    query: "SELECT COUNT(*) as count FROM Users;"
+  register: users_count
+  tags: [db]
+
+- name: Insert initial data if table is empty
+  community.mysql.mysql_query:
+    login_db: "{{ db_name }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    query: |
+      INSERT INTO Users (FirstName, LastName) VALUES 
+        ('John', 'Doe'),
+        ('Jane', 'Smith'),
+        ('Bob', 'Johnson');
+  when: "users_count.query_result[0][0].count == '0'"
+  tags: [db]
+
+- name: Create .my.cnf file for root
+  ansible.builtin.template:
+    src: my.cnf.j2
+    dest: /root/.my.cnf
+    mode: '0600'
+    owner: root
+    group: root
+    force: no  # Ne pas écraser si identique
+  tags: [db]
+
+- name: Check MariaDB service status
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+  register: mariadb_status
+  tags: [db]
+
+- name: Check database connectivity
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    query: SELECT VERSION()
+  register: db_version
   changed_when: false
+  tags: [db]
+
+- name: Display MariaDB version
+  debug:
+    var: db_version.query_result
+  tags: [db]
+
+- name: Stop MariaDB service before reconfiguration
+  ansible.builtin.service:
+    name: mariadb
+    state: stopped
+  tags: [db]
+
+- name: Clear any existing locks
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /var/lib/mysql/aria_log_control
+    - /var/run/mysqld/mysqld.pid
+    - /var/lib/mysql/mysql.sock
+    - /var/lib/mysql/ibdata1.lck
+  ignore_errors: yes
+  tags: [db]
+
+- name: Ensure MySQL directories have correct permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0750'
+  with_items:
+    - /var/lib/mysql
+    - /var/run/mysqld
+    - /var/log/mysql
+  tags: [db]
+
+- name: Create MariaDB configuration
+  ansible.builtin.copy:
+    content: |
+      [mysqld]
+      bind-address = 0.0.0.0
+      character-set-server = utf8mb4
+      collation-server = utf8mb4_general_ci
+      
+      # Performance & Security
+      max_connections = 100
+      max_user_connections = 50
+      skip-name-resolve
+      
+      # InnoDB settings
+      innodb_buffer_pool_size = 128M
+      innodb_log_file_size = 32M
+      innodb_flush_log_at_trx_commit = 2
+      innodb_file_per_table = 1
+      
+      # Aria settings
+      aria_log_file_size = 32M
+      aria_log_purge_type = immediate
+      
+      [client]
+      default-character-set = utf8mb4
+      
+      [mysql]
+      default-character-set = utf8mb4
+    dest: /etc/mysql/conf.d/custom.cnf
+    owner: mysql
+    group: mysql
+    mode: '0644'
+  notify: restart mariadb
+  tags: [db]
+
+- name: Start and enable MariaDB
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: yes
+  tags: [db]
+
+- name: Wait for MariaDB to be ready
+  ansible.builtin.wait_for:
+    path: /var/run/mysqld/mysqld.sock
+    state: present
+    timeout: 30
+  tags: [db]
+
+- name: Create database
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+  register: db_created
+  tags: [db]
+
+- name: Create database user with privileges
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL"
+    host: '%'
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+  register: user_created
+  tags: [db]
+
+- name: Create Users table
+  community.mysql.mysql_query:
+    login_db: "{{ db_name }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    query: |
+      CREATE TABLE IF NOT EXISTS Users (
+        ID INT PRIMARY KEY AUTO_INCREMENT,
+        FirstName VARCHAR(50),
+        LastName VARCHAR(50)
+      );
+  tags: [db]
+
+- name: Check if table is empty
+  community.mysql.mysql_query:
+    login_db: "{{ db_name }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    query: "SELECT COUNT(*) as count FROM Users;"
+  register: users_count
+  tags: [db]
+
+- name: Insert initial data if table is empty
+  community.mysql.mysql_query:
+    login_db: "{{ db_name }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    query: |
+      INSERT INTO Users (FirstName, LastName) VALUES 
+        ('John', 'Doe'),
+        ('Jane', 'Smith'),
+        ('Bob', 'Johnson');
+  when: "users_count.query_result[0][0].count == '0'"
+  tags: [db]
+
+- name: Create .my.cnf file for root
+  ansible.builtin.template:
+    src: my.cnf.j2
+    dest: /root/.my.cnf
+    mode: '0600'
+    owner: root
+    group: root
+    force: no  # Ne pas écraser si identique
+  tags: [db]
+
+- name: Check MariaDB service status
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+  register: mariadb_status
+  tags: [db]
+
+- name: Check database connectivity
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    query: SELECT VERSION()
+  register: db_version
+  changed_when: false
+  tags: [db]
+
+- name: Display MariaDB version
+  debug:
+    var: db_version.query_result
   tags: [db]

@@ -3,3 +3,11 @@
     name: mariadb
     state: restarted
     enabled: yes
+  register: mariadb_restart
+  ignore_errors: yes
+
+- name: check mariadb error
+  ansible.builtin.command: systemctl status mariadb
+  when: mariadb_restart is failed
+  register: mariadb_status
+  changed_when: false
