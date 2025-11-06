@@ -1,14 +1,25 @@
-# Région AWS
+# Configuration AWS
 aws_region: us-east-1
+vpc_id: "{{ ansible_env.AWS_VPC_ID | default(omit) }}"
+subnet_id: "{{ ansible_env.AWS_SUBNET_ID | default(omit) }}"
 
-# AMI Debian à utiliser
-debian_ami_id: "ami-0f9c27b471bdcd702"
-
-# Type d'instance pour tout le lab
+# Configuration des instances
 instance_type: t3.micro
-
-# Nom de la clé AWS
+debian_ami_id: "ami-0f9c27b471bdcd702"
 webdev_key_name: "vockey"
+
+# Identification du projet
+project_tag: "webdev-lab"
+
+# Security Groups
+bastion_sg_name: "{{ project_tag }}-bastion-sg"
+web_sg_name: "{{ project_tag }}-web-sg"
+db_sg_name: "{{ project_tag }}-db-sg"
+
+# CIDR autorisés
+ssh_cidr: "0.0.0.0/0"           # Accès SSH au bastion
+web_http_cidr: "0.0.0.0/0"      # Accès HTTP aux serveurs web
+phpmyadmin_cidr: "0.0.0.0/0"    # Accès phpMyAdmin
 
 # Configuration SSH
 ansible_user: admin
@@ -24,38 +35,17 @@ ansible_ssh_common_args: >-
   -o ControlPath=/tmp/ansible-ssh-%h-%p-%r
   -o ControlPersist=15m
 
-# Nom du Security Group pour le lab
-webdev_sg_name: "webdev-lab-sg"
-
-# CIDR autorisé pour SSH (pour le TP tu peux mettre 0.0.0.0/0)
-ssh_cidr: "0.0.0.0/0"
-
-# CIDR autorisé pour HTTP (accès web)
-web_http_cidr: "0.0.0.0/0"
-
-# CIDR autorisé pour phpMyAdmin
-phpmyadmin_cidr: "0.0.0.0/0"
-
-# Variables DB
+# Configuration Base de données
 db_name: "Test1"
 db_user: "admin"
-db_password: "IG2IUser"
+db_password: "IG2IUser"         # À changer en production !
 db_port: 3306
 
-# Container phpMyAdmin
+# Configuration phpMyAdmin
 phpmyadmin_container_name: "myadmin"
 
-# Groupe Linux pour bosser sur /var/www/html
-dev_group: "admin"
+# Configuration système
+dev_group: "admin"              # Groupe pour /var/www/html
 
-# Etat de l'infra (present / absent) pour le rôle infra
-infra_state: "present"
-
-project_tag: "webdev-lab"
-
-# Noms des security groups
-bastion_sg_name: "{{ project_tag }}-bastion-sg"
-web_sg_name: "{{ project_tag }}-web-sg"
-db_sg_name: "{{ project_tag }}-db-sg"
-
-bastion_user: "admin"
+# État de l'infrastructure
+infra_state: "present"          # Options: present/absent

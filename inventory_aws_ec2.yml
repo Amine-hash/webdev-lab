@@ -4,7 +4,7 @@ regions:
 
 filters:
   tag:Project: webdev-lab
-  instance-state-name: running
+  instance-state-name: ["pending", "running"]
 
 strict: no
 hostnames:
@@ -26,6 +26,13 @@ compose:
     {%- endif -%}
   ansible_user: "{{ bastion_user | default('admin') }}"
   ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
+  ansible_ssh_common_args: >-
+    -o StrictHostKeyChecking=no
+    -o UserKnownHostsFile=/dev/null
+    -o ServerAliveInterval=30
+    -o ControlMaster=auto
+    -o ControlPath=/tmp/ansible-ssh-%h-%p-%r
+    -o ControlPersist=15m
   ansible_ssh_extra_args: >-
     {%- if tags.Role != "Bastion" -%}
     -o ProxyCommand="ssh -W %h:%p -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}"

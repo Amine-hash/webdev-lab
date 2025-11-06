@@ -1,5 +1,11 @@
 ---
-# Install required packages
+# System update and package installation
+- name: Update apt cache and upgrade packages
+  ansible.builtin.apt:
+    update_cache: yes
+    upgrade: safe
+  tags: [bastion]
+
 - name: Install admin tools on bastion
   ansible.builtin.apt:
     name:
@@ -8,8 +14,13 @@
       - tmux
       - curl
       - git
+      - net-tools
+      - dnsutils
+      - iputils-ping
+      - tree
+      - bash-completion
     state: present
-    update_cache: yes
+    install_recommends: yes
   tags: [bastion]
 
 # SSH hardening

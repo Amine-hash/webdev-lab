@@ -10,6 +10,8 @@ Host webdev-*
     ControlMaster auto
     ControlPath ~/.ssh/control-%r@%h:%p
     ControlPersist 5m
+    ConnectTimeout 60
+    BatchMode yes
 
 Host webdev-web
     HostName {{ hostvars[groups['tag_Role_Web'][0]].private_ip_address }}
@@ -28,3 +30,5 @@ Host *
     ConnectTimeout 30
     BatchMode yes
     PreferredAuthentications publickey
+    AddKeysToAgent yes
+    IdentitiesOnly yes

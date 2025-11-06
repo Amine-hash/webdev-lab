@@ -3,17 +3,30 @@
     name: "{{ bastion_sg_name }}"
     description: "Bastion SG for {{ project_tag }}"
     region: "{{ aws_region }}"
+    vpc_id: "{{ vpc_id | default(omit) }}"
     state: present
     rules:
       - proto: tcp
         from_port: 22
         to_port: 22
         cidr_ip: "{{ ssh_cidr }}"
+        rule_desc: "Allow SSH from Internet"
     rules_egress:
-      - proto: -1
-        from_port: 0
-        to_port: 0
+      - proto: tcp
+        from_port: 22
+        to_port: 22
         cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow SSH to internal instances"
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow HTTP for package management"
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow HTTPS for package management"
   register: bastion_sg
   when: infra_state == "present"
 
@@ -27,6 +40,7 @@
     name: "{{ web_sg_name }}"
     description: "Web SG for {{ project_tag }}"
     region: "{{ aws_region }}"
+    vpc_id: "{{ vpc_id | default(omit) }}"
     state: present
     rules:
       - proto: tcp
@@ -50,11 +64,6 @@
         to_port: 443
         cidr_ip: "0.0.0.0/0"
         rule_desc: "Allow HTTPS outbound"
-      - proto: tcp
-        from_port: 3306
-        to_port: 3306
-        cidr_ip: "0.0.0.0/0"
-        rule_desc: "Allow MySQL to DB servers"
   register: web_sg
   when: infra_state == "present"
 
@@ -63,13 +72,13 @@
     web_sg_id: "{{ web_sg.group_id }}"
   when: infra_state == "present"
 
-- name: Create DB security group (initial)
+- name: Create DB security group
   amazon.aws.ec2_security_group:
     name: "{{ db_sg_name }}"
     description: "DB SG for {{ project_tag }}"
     region: "{{ aws_region }}"
-    state: present
     vpc_id: "{{ vpc_id | default(omit) }}"
+    state: present
     rules:
       - proto: tcp
         from_port: 22
@@ -87,10 +96,16 @@
         group_id: "{{ bastion_sg_id }}"
         rule_desc: "Allow MySQL from Bastion"
     rules_egress:
-      - proto: -1
-        from_port: 0
-        to_port: 0
+      - proto: tcp
+        from_port: 80
+        to_port: 80
         cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow HTTP for package management"
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow HTTPS for package management"
   register: db_sg
   when: infra_state == "present"
 
@@ -142,14 +157,14 @@
     security_groups: ["{{ bastion_sg_id }}"]
     network:
       assign_public_ip: true
+      subnet_id: "{{ subnet_id | default(omit) }}"
     state: running
     wait: true
     count: 1
     filters:
-      instance-state-name: ["pending", "running", "stopping", "stopped"]
+      instance-state-name: ["pending", "running"]
       "tag:Project": "{{ project_tag }}"
       "tag:Role": "Bastion"
-      "tag:Name": "webdev-bastion"
     tags:
       Project: "{{ project_tag }}"
       Role: "Bastion"
@@ -167,11 +182,12 @@
     security_groups: ["{{ web_sg_id }}"]
     network:
       assign_public_ip: true
+      subnet_id: "{{ subnet_id | default(omit) }}"
     state: running
     wait: true
     count: 1
     filters:
-      instance-state-name: running
+      instance-state-name: ["pending", "running"]
       "tag:Project": "{{ project_tag }}"
       "tag:Role": "Web"
     tags:
@@ -191,11 +207,12 @@
     security_groups: ["{{ db_sg_id }}"]
     network:
       assign_public_ip: true
+      subnet_id: "{{ subnet_id | default(omit) }}"
     state: running
     wait: true
     count: 1
     filters:
-      instance-state-name: running
+      instance-state-name: ["pending", "running"]
       "tag:Project": "{{ project_tag }}"
       "tag:Role": "DB"
     tags:
@@ -303,6 +320,7 @@
     name: "{{ db_sg_name }}"
     description: "DB SG for {{ project_tag }}"
     region: "{{ aws_region }}"
+    vpc_id: "{{ vpc_id | default(omit) }}"
     state: present
     purge_rules: false
     rules:
@@ -311,7 +329,6 @@
         to_port: 3306
         group_id: "{{ web_sg_id }}"
         rule_desc: "Allow MySQL from Web servers"
-  register: db_sg_update
   when: infra_state == "present"
 
 - name: Update Web security group with DB access
@@ -319,6 +336,7 @@
     name: "{{ web_sg_name }}"
     description: "Web SG for {{ project_tag }}"
     region: "{{ aws_region }}"
+    vpc_id: "{{ vpc_id | default(omit) }}"
     state: present
     purge_rules: false
     rules:
@@ -327,5 +345,4 @@
         to_port: 3306
         group_id: "{{ db_sg_id }}"
         rule_desc: "Allow MySQL access to DB servers"
-  register: web_sg_update
   when: infra_state == "present"

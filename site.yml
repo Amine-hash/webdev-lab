@@ -30,6 +30,14 @@
       pause:
         seconds: 10
       when: "'tag_Role_Bastion' in groups"
+    - name: Clear dynamic inventory cache
+      ansible.builtin.file:
+        path: ~/.ansible/tmp/ansible-ec2-*.cache
+        state: absent
+      when: "'tag_Role_Bastion' in groups"
+    - name: Refresh inventory after bastion configuration
+      meta: refresh_inventory
+      when: "'tag_Role_Bastion' in groups"
 
 - name: Configure Database servers
   hosts: tag_Role_DB
