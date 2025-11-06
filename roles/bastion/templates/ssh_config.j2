@@ -1,0 +1,6 @@
+Host *
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    IdentityFile /home/{{ ansible_user }}/.ssh/{{ webdev_key_name }}.pem
+    User {{ ansible_user }}
+

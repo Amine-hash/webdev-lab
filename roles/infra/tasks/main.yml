@@ -139,6 +139,7 @@
     tags:
       Project: "{{ project_tag }}"
       Role: "Bastion"
+  register: bastion_instance
   when: infra_state == "present"
 
 - name: Ensure Web instance exists
@@ -156,6 +157,7 @@
     tags:
       Project: "{{ project_tag }}"
       Role: "Web"
+  register: web_instance
   when: infra_state == "present"
 
 - name: Ensure DB instance exists
@@ -173,6 +175,17 @@
     tags:
       Project: "{{ project_tag }}"
       Role: "DB"
+  register: db_instance
+  when: infra_state == "present"
+
+- name: Wait for SSH on bastion to become available
+  ansible.builtin.wait_for:
+    host: "{{ item.public_ip_address }}"
+    port: 22
+    delay: 10
+    timeout: 320
+    state: started
+  loop: "{{ bastion_instance.instances }}"
   when: infra_state == "present"
 
 # === Mode destruction ======================================
