@@ -3,7 +3,7 @@ regions:
   - us-east-1
 
 filters:
-  tag:Project: webdev-lab
+  tag:Project: webdev
   instance-state-name: ["running"]
 
 strict: no
