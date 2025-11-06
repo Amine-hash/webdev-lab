@@ -21,13 +21,32 @@
     cache_valid_time: 3600
   tags: [db]
 
+- name: Ensure mysql directories exist with correct permissions
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'
+  with_items:
+    - /var/run/mysqld
+    - /var/lib/mysql
+  tags: [db]
+
+- name: Initialize MariaDB data directory if needed
+  ansible.builtin.command:
+    cmd: mariadb-install-db --user=mysql
+    creates: /var/lib/mysql/mysql
+  become: yes
+  tags: [db]
+
 - name: Configure MariaDB to listen on all interfaces
   ansible.builtin.lineinfile:
     path: /etc/mysql/mariadb.conf.d/50-server.cnf
     regexp: '^bind-address\s*='
     line: 'bind-address            = 0.0.0.0'
     state: present
-    backup: no  # No need for backup on each run
+    backup: no
   notify: restart mariadb
   tags: [db]
 
@@ -36,6 +55,13 @@
     name: mariadb
     state: started
     enabled: yes
+  tags: [db]
+
+- name: Wait for MariaDB to be ready
+  ansible.builtin.wait_for:
+    path: /var/run/mysqld/mysqld.sock
+    state: present
+    timeout: 30
   tags: [db]
 
 - name: Create database

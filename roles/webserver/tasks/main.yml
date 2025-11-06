@@ -22,7 +22,6 @@
       - apache2-utils
       - apache2-bin
       - python3-pymysql
-      - libapache2-mod-headers
       - libapache2-mod-php
     state: present
     update_cache: yes
