@@ -28,54 +28,35 @@
     enabled: yes
   tags: [db]
 
-- name: Create application database
+- name: Create database
   community.mysql.mysql_db:
     name: "{{ db_name }}"
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [db]
 
-- name: Create application DB user with privileges
+- name: Create database user with privileges
   community.mysql.mysql_user:
     name: "{{ db_user }}"
     password: "{{ db_password }}"
     priv: "{{ db_name }}.*:ALL"
-    host: "%"
+    host: '%'
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [db]
 
-- name: Create Users table if not exists
+- name: Create Users table
   community.mysql.mysql_query:
-    login_user: "{{ db_user }}"
-    login_password: "{{ db_password }}"
-    login_db: "{{ db_name }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    db: "{{ db_name }}"
     query: |
       CREATE TABLE IF NOT EXISTS Users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        LastName VARCHAR(50),
-        FirstName VARCHAR(50)
+        ID INT PRIMARY KEY AUTO_INCREMENT,
+        FirstName VARCHAR(50),
+        LastName VARCHAR(50)
       );
-  tags: [db]
-
-- name: Check if demo users exist
-  community.mysql.mysql_query:
-    login_user: "{{ db_user }}"
-    login_password: "{{ db_password }}"
-    login_db: "{{ db_name }}"
-    query: SELECT COUNT(*) as count FROM Users
-  register: users_count
-  tags: [db]
-
-- name: Insert demo users if table is empty
-  community.mysql.mysql_query:
-    login_user: "{{ db_user }}"
-    login_password: "{{ db_password }}"
-    login_db: "{{ db_name }}"
-    query: |
-      INSERT INTO Users (LastName, FirstName) VALUES
-      ('Doe', 'John'),
-      ('Smith', 'Jane'),
-      ('Martin', 'Bob')
-  when: users_count.query_result[0][0].count == 0
+      INSERT IGNORE INTO Users (FirstName, LastName) VALUES 
+        ('John', 'Doe'),
+        ('Jane', 'Smith'),
+        ('Bob', 'Johnson');
   tags: [db]
