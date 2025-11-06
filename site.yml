@@ -22,6 +22,15 @@
   roles:
     - bastion
 
+- name: Wait for SSH service to stabilize
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Pause for SSH restart
+      pause:
+        seconds: 10
+      when: "'tag_Role_Bastion' in groups"
+
 - name: Configure Database servers
   hosts: tag_Role_DB
   become: yes

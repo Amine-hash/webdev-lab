@@ -1,3 +1,5 @@
+---
+# Install required packages
 - name: Install admin tools on bastion
   ansible.builtin.apt:
     name:
@@ -10,6 +12,7 @@
     update_cache: yes
   tags: [bastion]
 
+# SSH hardening
 - name: Harden SSH configuration (no root login, no password auth)
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
@@ -30,13 +33,8 @@
     enabled: yes
   tags: [bastion]
 
-- name: restart ssh
-  ansible.builtin.service:
-    name: ssh
-    state: restarted
-  tags: [bastion]
-
-- name: Ensure .ssh directory exists for {{ ansible_user }}
+# SSH key setup
+- name: Ensure .ssh directory exists
   ansible.builtin.file:
     path: "/home/{{ ansible_user }}/.ssh"
     state: directory
@@ -45,7 +43,7 @@
     mode: "0700"
   tags: [bastion]
 
-- name: Copy labsuser.pem to bastion for manual SSH
+- name: Copy SSH private key to bastion
   ansible.builtin.copy:
     src: "{{ ansible_ssh_private_key_file }}"
     dest: "/home/{{ ansible_user }}/.ssh/labsuser.pem"
@@ -54,38 +52,11 @@
     mode: "0600"
   tags: [bastion]
 
-- name: Create SSH config file
-  ansible.builtin.template:
-    src: ssh_config.j2
-    dest: "/home/{{ ansible_user }}/.ssh/config"
-    mode: '0600'
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-  tags: [bastion]
-
-- name: Ensure .ssh directory exists on bastion
-  ansible.builtin.file:
-    path: /home/admin/.ssh
-    state: directory
-    mode: '0700'
-    owner: admin
-    group: admin
-  tags: [bastion]
-
-- name: Copy SSH private key to bastion
-  ansible.builtin.copy:
-    src: "{{ ansible_ssh_private_key_file }}"
-    dest: /home/admin/.ssh/labsuser.pem
-    mode: '0600'
-    owner: admin
-    group: admin
-  tags: [bastion]
-
 - name: Configure SSH client for proxy access
   ansible.builtin.template:
     src: ssh_config.j2
-    dest: /home/admin/.ssh/config
-    mode: '0600'
-    owner: admin
-    group: admin
+    dest: "/home/{{ ansible_user }}/.ssh/config"
+    mode: "0600"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
   tags: [bastion]
