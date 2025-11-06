@@ -166,7 +166,7 @@
 
 - name: Ensure Bastion instance exists
   amazon.aws.ec2_instance:
-    name: "webdev-bastion"
+    name: "webdev-bastion-{{ project_tag }}"
     region: "{{ aws_region }}"
     image_id: "{{ debian_ami_id }}"
     instance_type: "{{ instance_type }}"
@@ -177,15 +177,15 @@
       subnet_id: "{{ subnet_id | default(omit) }}"
     state: running
     wait: true
-    count: 1
-    filters:
-      instance-state-name: ["pending", "running"]
-      "tag:Project": "{{ project_tag }}"
-      "tag:Role": "Bastion"
-    tags:
+    exact_count: 1
+    count_tag:
       Project: "{{ project_tag }}"
       Role: "Bastion"
-      Name: "webdev-bastion"
+      Name: "webdev-bastion-{{ project_tag }}"
+    instance_tags:
+      Project: "{{ project_tag }}"
+      Role: "Bastion"
+      Name: "webdev-bastion-{{ project_tag }}"
   register: bastion_instance
   when: infra_state == "present" and (existing_bastion.instances | length == 0)
 
@@ -196,7 +196,7 @@
 
 - name: Ensure Web instance exists
   amazon.aws.ec2_instance:
-    name: "webdev-web"
+    name: "webdev-web-{{ project_tag }}"
     region: "{{ aws_region }}"
     image_id: "{{ debian_ami_id }}"
     instance_type: "{{ instance_type }}"
@@ -207,15 +207,15 @@
       subnet_id: "{{ subnet_id | default(omit) }}"
     state: running
     wait: true
-    count: 1
-    filters:
-      instance-state-name: ["pending", "running"]
-      "tag:Project": "{{ project_tag }}"
-      "tag:Role": "Web"
-    tags:
+    exact_count: 1
+    count_tag:
       Project: "{{ project_tag }}"
       Role: "Web"
-      Name: "webdev-web"
+      Name: "webdev-web-{{ project_tag }}"
+    instance_tags:
+      Project: "{{ project_tag }}"
+      Role: "Web"
+      Name: "webdev-web-{{ project_tag }}"
   register: web_instance
   when: infra_state == "present" and (existing_web.instances | length == 0)
 
@@ -226,7 +226,7 @@
 
 - name: Ensure DB instance exists
   amazon.aws.ec2_instance:
-    name: "webdev-db"
+    name: "webdev-db-{{ project_tag }}"
     region: "{{ aws_region }}"
     image_id: "{{ debian_ami_id }}"
     instance_type: "{{ instance_type }}"
@@ -237,15 +237,15 @@
       subnet_id: "{{ subnet_id | default(omit) }}"
     state: running
     wait: true
-    count: 1
-    filters:
-      instance-state-name: ["pending", "running"]
-      "tag:Project": "{{ project_tag }}"
-      "tag:Role": "DB"
-    tags:
+    exact_count: 1
+    count_tag:
       Project: "{{ project_tag }}"
       Role: "DB"
-      Name: "webdev-db"
+      Name: "webdev-db-{{ project_tag }}"
+    instance_tags:
+      Project: "{{ project_tag }}"
+      Role: "DB"
+      Name: "webdev-db-{{ project_tag }}"
   register: db_instance
   when: infra_state == "present" and (existing_db.instances | length == 0)
 

@@ -61,7 +61,8 @@
     owner: www-data
     group: www-data
     mode: "0644"
-    force: no
+    force: yes
+  register: index_deployment
   tags: [web]
 
 - name: Deploy info.php
@@ -71,7 +72,8 @@
     owner: www-data
     group: www-data
     mode: "0644"
-    force: no
+    force: yes
+  register: info_deployment
   tags: [web]
 
 - name: Compute DB host private IP (first DB server)
@@ -87,18 +89,20 @@
     owner: www-data
     group: www-data
     mode: "0644"
-    force: no
+    force: yes
+  register: dump_deployment
+  notify: restart apache
   tags: [web]
 
-- name: Ensure PHP files have correct permissions
+# Les autorisations sont maintenant gérées par les tâches de déploiement ci-dessus
+- name: Ensure Apache user can write cache
   ansible.builtin.file:
-    path: "/var/www/html/{{ item }}"
+    path: /var/cache/apache2
+    state: directory
     owner: www-data
     group: www-data
-    mode: "0644"
-  loop:
-    - info.php
-    - dump.table.php
+    mode: "0755"
+    recurse: yes
   tags: [web]
 
 - name: Validate Apache configuration
