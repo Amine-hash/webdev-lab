@@ -206,6 +206,17 @@
   loop: "{{ bastion_instance.instances }}"
   when: infra_state == "present"
 
+- name: Pause for 30 seconds to let AWS EC2 inventory catch up
+  ansible.builtin.pause:
+    seconds: 30
+  when: infra_state == "present"
+
+- name: Clear dynamic inventory cache
+  ansible.builtin.file:
+    path: ~/.ansible/tmp/ansible-ec2-*.cache
+    state: absent
+  when: infra_state == "present"
+
 # === Mode destruction ======================================
 
 - name: Terminate all instances for this project
