@@ -9,6 +9,7 @@ filters:
 strict: no
 hostnames:
   - private-ip-address
+  - public-ip-address
   - tag:Name
   - private-dns-name
 
@@ -28,9 +29,21 @@ compose:
   ansible_ssh_private_key_file: /home/admin/.ssh/labsuser.pem
   ansible_ssh_common_args: >-
     {%- if tags.Role != "Bastion" -%}
-    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="ssh -W %h:%p -i /home/admin/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@{{ groups['tag_Role_Bastion'] | map('extract', hostvars) | selectattr('public_ip_address', 'defined') | map(attribute='public_ip_address') | first }}"
+    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -i /home/admin/.ssh/labsuser.pem admin@{{ groups['tag_Role_Bastion'] | map('extract', hostvars) | selectattr('public_ip_address', 'defined') | map(attribute='public_ip_address') | first }}"
     {%- endif -%}
-  # Explicit variables for debugging
+  # Variables pour le bastion
+  ansible_ssh_extra_args: >-
+    {%- if tags.Role == "Bastion" -%}
+    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
+    {%- endif -%}
+  # Variables pour SSH via le bastion
+  ansible_ssh_host: >-
+    {%- if tags.Role != "Bastion" -%}
+    {{- private_ip_address -}}
+    {%- else -%}
+    {{- public_ip_address -}}
+    {%- endif -%}
+  # Debug vars
   public_ip_address: public_ip_address
   private_ip_address: private_ip_address
   instance_id: instance_id
