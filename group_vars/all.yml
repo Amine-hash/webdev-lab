@@ -29,7 +29,7 @@ ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
 bastion_user: admin
 bastion_private_key_file: "/home/admin/.ssh/labsuser.pem"
 
-# SSH common arguments
+# SSH common arguments with better proxy handling
 ansible_ssh_common_args: >-
   -o StrictHostKeyChecking=no 
   -o UserKnownHostsFile=/dev/null 
@@ -37,9 +37,12 @@ ansible_ssh_common_args: >-
   -o BatchMode=yes
   -o ConnectTimeout=60
   -o ServerAliveInterval=30
+  -o ServerAliveCountMax=10
+  -o TCPKeepAlive=yes
   -o ControlMaster=auto
   -o ControlPath=/tmp/ansible-ssh-%h-%p-%r
   -o ControlPersist=15m
+  -o ProxyCommand="ssh -W %h:%p -q {{ bastion_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }} -i {{ bastion_private_key_file }}"
 
 # Configuration Base de données
 db_name: "Test1"
