@@ -75,7 +75,7 @@
 - name: Create DB security group
   amazon.aws.ec2_security_group:
     name: "{{ db_sg_name }}"
-    description: "DB SG for {{ project_tag }}"
+    description: "Database SG for {{ project_tag }}"
     region: "{{ aws_region }}"
     vpc_id: "{{ vpc_id | default(omit) }}"
     state: present
@@ -83,29 +83,24 @@
       - proto: tcp
         from_port: 22
         to_port: 22
-        group_id: "{{ bastion_sg_id }}"
+        group_id: "{{ bastion_sg.group_id }}"
         rule_desc: "Allow SSH from Bastion"
       - proto: tcp
-        from_port: 80
-        to_port: 80
-        group_id: "{{ bastion_sg_id }}"
-        rule_desc: "Allow phpMyAdmin access only from Bastion"
+        from_port: "{{ db_port }}"
+        to_port: "{{ db_port }}"
+        group_id: "{{ web_sg.group_id }}"
+        rule_desc: "Allow MySQL from Web servers"
       - proto: tcp
-        from_port: 3306
-        to_port: 3306
-        group_id: "{{ bastion_sg_id }}"
-        rule_desc: "Allow MySQL from Bastion"
+        from_port: "{{ db_port }}"
+        to_port: "{{ db_port }}"
+        group_id: "{{ bastion_sg.group_id }}"
+        rule_desc: "Allow MySQL from Bastion (for phpMyAdmin)"
     rules_egress:
-      - proto: tcp
-        from_port: 80
-        to_port: 80
+      - proto: -1
+        from_port: -1
+        to_port: -1
         cidr_ip: "0.0.0.0/0"
-        rule_desc: "Allow HTTP for package management"
-      - proto: tcp
-        from_port: 443
-        to_port: 443
-        cidr_ip: "0.0.0.0/0"
-        rule_desc: "Allow HTTPS for package management"
+        rule_desc: "Allow all outbound traffic"
   register: db_sg
   when: infra_state == "present"
 

@@ -24,6 +24,9 @@ Host webdev-db
     HostName {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}
     ProxyCommand ssh -W %h:%p -i {{ ansible_ssh_private_key_file }} {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
 
+Host {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}
+    ProxyCommand ssh -W %h:%p -i {{ ansible_ssh_private_key_file }} {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
+
 # Configuration globale
 Host *
     ServerAliveInterval 60
