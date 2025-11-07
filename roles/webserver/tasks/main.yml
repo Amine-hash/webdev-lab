@@ -18,17 +18,20 @@
       - apache2-utils
       - apache2-bin
       - python3-pymysql
-      - libapache2-mod-php
-      - python3-pymysql
+      - python3-pip
       - libapache2-mod-php
     state: present
     update_cache: yes
     cache_valid_time: 3600
-    dpkg_options: "force-confold,force-confdef"
   tags: [web]
 
-# Ensure headers module is available and enabled
-- name: Install headers module
+- name: Install PyMySQL using pip
+  ansible.builtin.pip:
+    name: PyMySQL
+    state: present
+  tags: [web]
+
+- name: Install apache2 and headers module
   ansible.builtin.apt:
     name: apache2
     state: present
@@ -46,6 +49,15 @@
   community.general.apache2_module:
     name: headers
     state: present
+    ignore_configcheck: true
+  notify: restart apache
+  tags: [web]
+
+- name: Enable PHP module
+  community.general.apache2_module:
+    name: php
+    state: present
+    ignore_configcheck: true
   notify: restart apache
   tags: [web]
 
@@ -72,8 +84,8 @@
   ansible.builtin.file:
     path: /var/www/html
     state: directory
-    owner: "{{ web_user }}"
-    group: "{{ web_group }}"
+    owner: www-data
+    group: www-data
     mode: '0755'
   tags: [web]
 
@@ -81,8 +93,8 @@
   ansible.builtin.template:
     src: info.php.j2
     dest: /var/www/html/info.php
-    owner: "{{ web_user }}"
-    group: "{{ web_group }}"
+    owner: www-data
+    group: www-data
     mode: '0644'
   notify: restart apache
   tags: [web]
@@ -91,8 +103,8 @@
   ansible.builtin.template:
     src: dump.table.php.j2
     dest: /var/www/html/dump.table.php
-    owner: "{{ web_user }}"
-    group: "{{ web_group }}"
+    owner: www-data
+    group: www-data
     mode: '0644'
   notify: restart apache
   tags: [web]
@@ -101,8 +113,8 @@
   ansible.builtin.template:
     src: index.html.j2
     dest: /var/www/html/index.html
-    owner: "{{ web_user }}"
-    group: "{{ web_group }}"
+    owner: www-data
+    group: www-data
     mode: '0644'
   notify: restart apache
   tags: [web]
@@ -120,45 +132,23 @@
     enabled: yes
   tags: [web]
 
-- name: Check database connectivity
+- name: Wait for database to be reachable
   ansible.builtin.wait_for:
     host: "{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}"
-    port: "{{ db_port }}"
-    timeout: 30
+    port: 3306
+    timeout: 300
     connect_timeout: 5
-  ignore_errors: yes
+    delay: 10
+    sleep: 5
+  register: wait_db
+  until: wait_db is success
+  retries: 6
+  delay: 10
   tags: [web]
 
-- name: Verify database connection with query
-  community.mysql.mysql_query:
-    login_host: "{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}"
-    login_user: "{{ db_user }}"
-    login_password: "{{ db_password }}"
-    login_db: "{{ db_name }}"
-    query: SELECT 1
-    query: "SELECT 1"
-  register: db_check
-  ignore_errors: yes
-  tags: [web]
-
-- name: Display database connectivity result
-  ansible.builtin.debug:
-    var: db_check
-  when: db_check is defined
-  tags: [web]
-
-- name: Ensure web server can connect to database
-  ansible.builtin.wait_for:
-    host: "{{ db_host }}"
-    port: "{{ db_port }}"
-    timeout: 30
-    state: started
-  register: db_port_check
-  tags: [web]
-
-- name: Test MySQL connectivity from command line
-  ansible.builtin.command:
-    cmd: "mysql -h {{ db_host }} -u {{ db_user }} -p'{{ db_password }}' -e 'SELECT 1;'"
+- name: Test database connectivity with mysql client
+  ansible.builtin.shell: |
+    mysql -h {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }} -u {{ db_user }} -p'{{ db_password }}' -e 'SELECT 1;' {{ db_name }}
   register: mysql_test
   changed_when: false
   ignore_errors: yes
@@ -167,8 +157,9 @@
 
 - name: Display MySQL test result
   ansible.builtin.debug:
-    msg: "{{ mysql_test }}"
+    var: mysql_test.stdout_lines
   when: mysql_test is defined
+  no_log: false
   tags: [web]
 
 - name: Install netcat for connectivity testing
@@ -177,35 +168,33 @@
     state: present
   tags: [web]
 
-- name: Test database connectivity with netcat
+- name: Test database port with netcat
   ansible.builtin.shell: |
-    nc -zv {{ hostvars[groups['tag_Role_DB'][0]]['private_ip'] }} 3306
+    nc -zv {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }} 3306
   register: nc_result
   changed_when: false
   ignore_errors: yes
   tags: [web]
 
-- name: Display connection test result
+- name: Display netcat test result
   ansible.builtin.debug:
-    var: nc_result
+    var: nc_result.stderr
   tags: [web]
 
-- name: Verify database write access
-  community.mysql.mysql_query:
-    login_host: "{{ db_host }}"
-    login_user: "{{ db_user }}"
-    login_password: "{{ db_password }}"
-    login_db: "{{ db_name }}"
-    query: |
-      CREATE TABLE IF NOT EXISTS test_connectivity (id INT);
-      INSERT INTO test_connectivity VALUES (1);
-      DROP TABLE test_connectivity;
-  register: db_write_test
-  ignore_errors: yes
-  tags: [web]
-
-- name: Display database write test result
-  ansible.builtin.debug:
-    var: db_write_test
-  when: db_write_test is defined
+- name: Verify PHP MySQL connectivity
+  ansible.builtin.copy:
+    content: |
+      <?php
+      $conn = new mysqli("{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}", "{{ db_user }}", "{{ db_password }}", "{{ db_name }}");
+      if ($conn->connect_error) {
+        echo "Connection failed: " . $conn->connect_error;
+        exit(1);
+      }
+      echo "Connected successfully";
+      $conn->close();
+      ?>
+    dest: /var/www/html/db_test.php
+    owner: www-data
+    group: www-data
+    mode: '0644'
   tags: [web]

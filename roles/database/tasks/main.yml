@@ -1,3 +1,4 @@
+---
 - name: Check if MariaDB is already configured
   ansible.builtin.stat:
     path: /var/lib/mysql/{{ db_name }}
@@ -8,7 +9,7 @@
   ansible.builtin.apt:
     update_cache: yes
     upgrade: dist
-    cache_valid_time: 3600  # Add cache validity
+    cache_valid_time: 3600
   tags: [db]
 
 - name: Install MariaDB and required packages
@@ -78,17 +79,17 @@
     enabled: true
   tags: [db]
 
-- name: Create database user
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    query: >
-      CREATE USER IF NOT EXISTS '{{ db_user }}'@'%' IDENTIFIED BY '{{ db_password }}';
+- name: Wait for MariaDB service to be ready
+  ansible.builtin.wait_for:
+    path: /var/run/mysqld/mysqld.sock
+    timeout: 30
   tags: [db]
 
-- name: Grant privileges to database user
+- name: Create database user with two separate commands
   community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
-    query: >
+    query: |
+      CREATE USER IF NOT EXISTS '{{ db_user }}'@'%' IDENTIFIED BY '{{ db_password }}';
       GRANT ALL ON *.* TO '{{ db_user }}'@'%' WITH GRANT OPTION;
   tags: [db]
 
@@ -128,9 +129,31 @@
         ('Bob', 'Johnson');
   tags: [db]
 
-- name: Verify MariaDB network accessibility
+- name: Configure remote access bind-address using sed
+  ansible.builtin.lineinfile:
+    path: /etc/mysql/mariadb.conf.d/50-server.cnf
+    regexp: '^bind-address\s*='
+    line: 'bind-address = 0.0.0.0'
+    backup: yes
+  notify: restart mariadb
+  tags: [db]
+
+- name: Ensure MariaDB is running and enabled
+  ansible.builtin.service:
+    name: mariadb
+    state: restarted
+    enabled: yes
+  tags: [db]
+
+- name: Wait for MariaDB to be reachable
+  ansible.builtin.wait_for:
+    port: 3306
+    timeout: 30
+  tags: [db]
+
+- name: Verify MariaDB network accessibility using ss
   ansible.builtin.shell:
-    cmd: ss -tuln | grep :3306 || netstat -tuln | grep :3306
+    cmd: ss -tuln | grep :3306
   register: mysql_listening
   changed_when: false
   ignore_errors: yes

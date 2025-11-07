@@ -454,6 +454,7 @@
   delay: 10
   when: infra_state == "absent"
 
+# Update Security Groups for MySQL connectivity
 - name: Update DB security group with Web server access
   amazon.aws.ec2_security_group:
     name: "{{ db_sg_name }}"
@@ -478,80 +479,50 @@
     vpc_id: "{{ vpc_id | default(omit) }}"
     state: present
     purge_rules: false
-    rules:
+    rules_egress:
       - proto: tcp
         from_port: 3306
         to_port: 3306
         group_id: "{{ db_sg_id }}"
-        rule_desc: "Allow MySQL access to DB servers"
+        rule_desc: "Allow MySQL to DB servers"
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow HTTP outbound"
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: "0.0.0.0/0"
+        rule_desc: "Allow HTTPS outbound"
   when: infra_state == "present"
 
-- name: Update security groups for force_update
+- name: Get updated security group info
   block:
     - name: Get updated Bastion security group
-      amazon.aws.ec2_security_group:
-        name: "{{ bastion_sg_name }}"
+      amazon.aws.ec2_security_group_info:
         region: "{{ aws_region }}"
-        vpc_id: "{{ vpc_id | default(omit) }}"
-        state: present
-        rules:
-          - proto: tcp
-            from_port: 22
-            to_port: 22
-            cidr_ip: "{{ ssh_cidr }}"
-            rule_desc: "Allow SSH from Internet"
-        rules_egress:
-          - proto: -1
-            from_port: -1
-            to_port: -1
-            cidr_ip: "0.0.0.0/0"
-            rule_desc: "Allow all outbound traffic"
-        purge_rules: true
-        purge_rules_egress: true
+        filters:
+          group-name: "{{ bastion_sg_name }}"
       register: bastion_sg_refresh
       when: force_update is defined and force_update
 
-    - name: Update web_sg fact for force_update
+    - name: Update bastion_sg fact for force_update
       ansible.builtin.set_fact:
-        bastion_sg_id: "{{ bastion_sg_refresh.group_id }}"
+        bastion_sg: "{{ bastion_sg_refresh }}"
       when: force_update is defined and force_update and bastion_sg_refresh.changed
 
     - name: Get updated Web security group
-      amazon.aws.ec2_security_group:
-        name: "{{ web_sg_name }}"
+      amazon.aws.ec2_security_group_info:
         region: "{{ aws_region }}"
-        vpc_id: "{{ vpc_id | default(omit) }}"
-        state: present
-        rules:
-          - proto: tcp
-            from_port: 80
-            to_port: 80
-            cidr_ip: "{{ web_http_cidr }}"
-            rule_desc: "Allow HTTP from Internet"
-          - proto: tcp
-            from_port: 22
-            to_port: 22
-            group_id: "{{ bastion_sg_id }}"
-            rule_desc: "Allow SSH only from Bastion"
-        rules_egress:
-          - proto: tcp
-            from_port: 80
-            to_port: 80
-            cidr_ip: "0.0.0.0/0"
-            rule_desc: "Allow HTTP outbound"
-          - proto: tcp
-            from_port: 443
-            to_port: 443
-            cidr_ip: "0.0.0.0/0"
-            rule_desc: "Allow HTTPS outbound"
-        purge_rules: true
-        purge_rules_egress: true
+        filters:
+          group-name: "{{ web_sg_name }}"
       register: web_sg_refresh
       when: force_update is defined and force_update
 
     - name: Update web_sg fact for force_update
       ansible.builtin.set_fact:
-        web_sg_id: "{{ web_sg_refresh.group_id }}"
+        web_sg: "{{ web_sg_refresh }}"
       when: force_update is defined and force_update and web_sg_refresh.changed
   when: infra_state == "present"
 
