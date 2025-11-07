@@ -267,26 +267,6 @@
     seconds: 30
   when: infra_state == "absent"
 
-- name: Remove cross-references in security groups
-  amazon.aws.ec2_security_group:
-    name: "{{ item }}"
-    region: "{{ aws_region }}"
-    state: present
-    rules: []
-    rules_egress: []
-    purge_rules: true
-    purge_rules_egress: true
-  loop:
-    - "{{ db_sg_name }}"
-    - "{{ web_sg_name }}"
-    - "{{ bastion_sg_name }}"
-  when: infra_state == "absent"
-
-- name: Wait for security group rules to be removed
-  ansible.builtin.pause:
-    seconds: 10
-  when: infra_state == "absent"
-
 - name: Delete DB security group
   amazon.aws.ec2_security_group:
     name: "{{ db_sg_name }}"

@@ -1,79 +1,143 @@
-# Web Development Lab with AWS Infrastructure
+# AWS Web Development Lab Infrastructure
 
-This repository contains Ansible playbooks to manage a web development infrastructure on AWS, including:
-- Bastion host for secure access
-- Web server running Apache/PHP
-- Database server running MariaDB
-- Security groups and networking configuration
+Infrastructure as Code project using Ansible to deploy a secure web development environment on AWS.
 
-## Project Structure
+## Architecture
 
+```plaintext
+                                     Private Network (172.31.x.x)
+┌──────────────┐     SSH     ┌──────────────┐     3306      ┌──────────────┐
+│    Bastion   │ ◄─────────► │  Web Server  │ ◄──────────── │ Database     │
+│              │     22      │  (Apache/PHP) │               │ (MariaDB)    │
+│ Public IP    │             │              │               │              │
+└──────────────┘             └──────────────┘               └──────────────┘
+       ▲                            ▲
+       │                            │
+       └────────────────┐          │
+                        │          │
+                     SSH (22)    HTTP (80)
+                        │          │
+                        ▼          ▼
+                    Admin/Dev    Users
 ```
-.
-├── group_vars/
-│   ├── all.yml                  # Global variables
-│   ├── tag_Role_Bastion.yml    # Bastion-specific variables
-│   ├── tag_Role_DB.yml         # Database-specific variables
-│   └── tag_Role_Web.yml        # Web server-specific variables
-├── inventory_aws_ec2.yml        # Dynamic AWS inventory configuration
-├── roles/
-│   ├── bastion/                # Bastion host configuration
-│   ├── database/               # MariaDB server configuration
-│   ├── infra/                  # AWS infrastructure management
-│   └── webserver/              # Apache/PHP configuration
-├── site.yml                    # Main playbook for infrastructure creation and configuration
-└── destroy.yml                 # Playbook for infrastructure destruction
-```
+
+## Features
+
+- **Secure Architecture**:
+  - Bastion host as single entry point
+  - Private network for web and database servers
+  - Security groups with least privilege access
+
+- **Web Stack**:
+  - Apache with PHP support
+  - MariaDB database
+  - Sample web application
+
+- **Infrastructure Management**:
+  - Dynamic AWS inventory
+  - Idempotent deployments
+  - Easy destroy/recreate cycle
 
 ## Prerequisites
 
-- Ansible
-- Python 3
-- boto3 (AWS SDK for Python)
-- AWS credentials configured
+1. AWS Account and credentials configured
+2. Ansible installed (version 2.9+)
+3. Python boto3 library installed:
+   ```bash
+   pip install boto3
+   ```
+4. AWS credentials configured in ~/.aws/credentials:
+   ```ini
+   [default]
+   aws_access_key_id = YOUR_ACCESS_KEY
+   aws_secret_access_key = YOUR_SECRET_KEY
+   ```
 
-## Usage
+## Quick Start
 
-### Creating and Configuring Infrastructure
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd webdev-lab
+```
 
-To create and configure the complete infrastructure:
+### 2. Configure Variables
+Review and adjust variables in:
+- `group_vars/all.yml` for global settings
+- `inventory_aws_ec2.yml` for AWS inventory configuration
 
+### 3. Deploy Infrastructure
 ```bash
 ansible-playbook -i inventory_aws_ec2.yml site.yml -e "infra_state=present"
 ```
 
-This will:
-1. Create all required security groups
-2. Launch EC2 instances (Bastion, Web, DB)
-3. Configure the Bastion host
-4. Install and configure MariaDB on the database server
-5. Set up Apache/PHP on the web server
-
-### Destroying Infrastructure
-
-To destroy all infrastructure components:
-
+### 4. Destroy Infrastructure
 ```bash
-ansible-playbook -i inventory_aws_ec2.yml destroy.yml -e "infra_state=absent"
+ansible-playbook -i localhost, destroy.yml
+```
+
+## Components
+
+### Bastion Host
+- Entry point for SSH access
+- Security group allowing inbound SSH from admin IPs
+- Forwards SSH connections to private instances
+
+### Web Server
+- Apache + PHP
+- Security group allowing HTTP from internet
+- SSH access only through bastion
+- Sample PHP pages for testing
+
+### Database Server
+- MariaDB
+- Private network only
+- Access restricted to web server
+- Security group allowing port 3306 only from web server
+
+## Security Groups
+
+1. **Bastion SG**:
+   - Inbound: SSH (22) from admin IPs
+   - Outbound: All allowed
+
+2. **Web Server SG**:
+   - Inbound: 
+     - HTTP (80) from internet
+     - SSH (22) from bastion
+   - Outbound: All allowed
+
+3. **Database SG**:
+   - Inbound:
+     - MariaDB (3306) from web server
+     - SSH (22) from bastion
+   - Outbound: All allowed
+
+## Testing the Deployment
+
+After deployment, you can access:
+1. Web Server Public IP:
+   - http://<web_public_ip>/info.php
+   - http://<web_public_ip>/dump.table.php
+   - http://<web_public_ip>/db_test.php
+
+2. SSH Access:
+   ```bash
+   # To Bastion
+   ssh -i ~/.ssh/labsuser.pem admin@<bastion_public_ip>
+   
+   # To Web/DB (via Bastion)
+   ssh -J admin@<bastion_public_ip> admin@<private_ip>
+   ```
+
+## Cleaning Up
+
+To destroy all resources:
+```bash
+ansible-playbook -i localhost, destroy.yml
 ```
 
 This will:
 1. Terminate all EC2 instances
-2. Remove all security groups
+2. Delete security groups in the correct order
 3. Clean up associated resources
-
-## Variables
-
-Key variables can be configured in `group_vars/all.yml`:
-- `project_tag`: Project name for resource tagging
-- `aws_region`: AWS region
-- `instance_type`: EC2 instance type
-- Database credentials and configuration
-- Security group settings
-
-## Security
-
-- All SSH access is routed through the Bastion host
-- Database is only accessible from the web server
-- Security groups enforce least-privilege access
-- SSH key pairs are managed securely

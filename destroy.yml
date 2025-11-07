@@ -1,7 +1,7 @@
 ---
 # destroy.yml
 # Playbook to destroy all AWS infrastructure components
-# Usage: ansible-playbook -i inventory_aws_ec2.yml destroy.yml -e "infra_state=absent"
+# Usage: ansible-playbook -i localhost, destroy.yml
 
 - name: Destroy AWS Web Dev Lab Infrastructure
   hosts: localhost
