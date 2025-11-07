@@ -103,112 +103,96 @@
     db_sg_id: "{{ db_sg.group_id }}"
   when: infra_state == "present" and db_sg.group_id is defined
 
-- name: Launch instances
-  block:
-    - name: Get instances info
-      amazon.aws.ec2_instance_info:
-        region: "{{ aws_region }}"
-        filters:
-          "tag:Project": "{{ project_tag }}"
-          "instance-state-name": "running"
-      register: existing_instances
-
-    - name: Create Bastion instance
-      amazon.aws.ec2_instance:
-        name: "{{ project_tag }}-bastion"
-        security_group: "{{ bastion_sg_name }}"
-        instance_type: "{{ instance_type }}"
-        image_id: "{{ debian_ami_id }}"
-        key_name: "{{ webdev_key_name }}"
-        region: "{{ aws_region }}"
-        state: "{{ infra_state }}"
-        tags:
-          Project: "{{ project_tag }}"
-          Role: Bastion
-        wait: yes
-      register: bastion_instance
-      when: not (existing_instances.instances | selectattr('tags.Role', 'equalto', 'Bastion') | list)
-
-    - name: Create Web instance
-      amazon.aws.ec2_instance:
-        name: "{{ project_tag }}-web"
-        security_group: "{{ web_sg_name }}"
-        instance_type: "{{ instance_type }}"
-        image_id: "{{ debian_ami_id }}"
-        key_name: "{{ webdev_key_name }}"
-        region: "{{ aws_region }}"
-        state: "{{ infra_state }}"
-        tags:
-          Project: "{{ project_tag }}"
-          Role: Web
-        wait: yes
-      register: web_instance
-      when: not (existing_instances.instances | selectattr('tags.Role', 'equalto', 'Web') | list)
-
-    - name: Create DB instance
-      amazon.aws.ec2_instance:
-        name: "{{ project_tag }}-db"
-        security_group: "{{ db_sg_name }}"
-        instance_type: "{{ instance_type }}"
-        image_id: "{{ debian_ami_id }}"
-        key_name: "{{ webdev_key_name }}"
-        region: "{{ aws_region }}"
-        state: "{{ infra_state }}"
-        tags:
-          Project: "{{ project_tag }}"
-          Role: DB
-        wait: yes
-      register: db_instance
-      when: not (existing_instances.instances | selectattr('tags.Role', 'equalto', 'DB') | list)
+- name: Get instances info
+  amazon.aws.ec2_instance_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Project": "{{ project_tag }}"
+      "instance-state-name": ["pending", "running"]
+  register: existing_instances
   when: infra_state == "present"
 
-- name: Set bastion_instance_id from existing instance
-  ansible.builtin.set_fact:
-    bastion_instance_id: "{{ existing_instances.instances | selectattr('tags.Role', 'equalto', 'Bastion') | map(attribute='instance_id') | first }}"
-  when:
-    - infra_state == "present"
-    - existing_instances.instances | selectattr('tags.Role', 'equalto', 'Bastion') | list | length > 0
+- name: Ensure Bastion instance exists
+  amazon.aws.ec2_instance:
+    name: "{{ project_tag }}-bastion"
+    instance_type: "{{ instance_type }}"
+    image_id: "{{ debian_ami_id }}"
+    key_name: "{{ webdev_key_name }}"
+    security_group: "{{ bastion_sg_name }}"
+    network:
+      assign_public_ip: true
+    tags:
+      Name: "{{ project_tag }}-bastion"
+      Role: "Bastion"
+      Project: "{{ project_tag }}"
+    exact_count: 1
+    count_tag:
+      Role: "Bastion"
+      Project: "{{ project_tag }}"
+    vpc_subnet_id: "{{ web_subnet_id | default(omit) }}"
+    state: "{{ infra_state }}"
+    wait: yes
+    region: "{{ aws_region }}"
+  register: bastion_instance
+  when: infra_state == "present"
 
-- name: Set bastion_instance_id from newly created instance
-  ansible.builtin.set_fact:
-    bastion_instance_id: "{{ bastion_instance.instances[0].instance_id }}"
-  when:
-    - infra_state == "present"
-    - bastion_instance is defined
-    - bastion_instance.instances is defined
-    - bastion_instance.instances | length > 0
+- name: Ensure Web instance exists
+  amazon.aws.ec2_instance:
+    name: "{{ project_tag }}-web"
+    instance_type: "{{ instance_type }}"
+    image_id: "{{ debian_ami_id }}"
+    key_name: "{{ webdev_key_name }}"
+    security_group: "{{ web_sg_name }}"
+    network:
+      assign_public_ip: true
+    tags:
+      Name: "{{ project_tag }}-web"
+      Role: "Web"
+      Project: "{{ project_tag }}"
+    exact_count: 1
+    count_tag:
+      Role: "Web"
+      Project: "{{ project_tag }}"
+    vpc_subnet_id: "{{ web_subnet_id | default(omit) }}"
+    state: "{{ infra_state }}"
+    wait: yes
+    region: "{{ aws_region }}"
+  register: web_instance
+  when: infra_state == "present"
 
-- name: Set web_instance_id from existing instance
-  ansible.builtin.set_fact:
-    web_instance_id: "{{ existing_instances.instances | selectattr('tags.Role', 'equalto', 'Web') | map(attribute='instance_id') | first }}"
-  when:
-    - infra_state == "present"
-    - existing_instances.instances | selectattr('tags.Role', 'equalto', 'Web') | list | length > 0
+- name: Ensure DB instance exists
+  amazon.aws.ec2_instance:
+    name: "{{ project_tag }}-db"
+    instance_type: "{{ instance_type }}"
+    image_id: "{{ debian_ami_id }}"
+    key_name: "{{ webdev_key_name }}"
+    security_group: "{{ db_sg_name }}"
+    network:
+      assign_public_ip: false
+    tags:
+      Name: "{{ project_tag }}-db"
+      Role: "DB"
+      Project: "{{ project_tag }}"
+    exact_count: 1
+    count_tag:
+      Role: "DB"
+      Project: "{{ project_tag }}"
+    vpc_subnet_id: "{{ db_subnet_id | default(omit) }}"
+    state: "{{ infra_state }}"
+    wait: yes
+    region: "{{ aws_region }}"
+  register: db_instance
+  when: infra_state == "present"
 
-- name: Set web_instance_id from newly created instance
-  ansible.builtin.set_fact:
-    web_instance_id: "{{ web_instance.instances[0].instance_id }}"
-  when:
-    - infra_state == "present"
-    - web_instance is defined
-    - web_instance.instances is defined
-    - web_instance.instances | length > 0
-
-- name: Set db_instance_id from existing instance
-  ansible.builtin.set_fact:
-    db_instance_id: "{{ existing_instances.instances | selectattr('tags.Role', 'equalto', 'DB') | map(attribute='instance_id') | first }}"
-  when:
-    - infra_state == "present"
-    - existing_instances.instances | selectattr('tags.Role', 'equalto', 'DB') | list | length > 0
-
-- name: Set db_instance_id from newly created instance
-  ansible.builtin.set_fact:
-    db_instance_id: "{{ db_instance.instances[0].instance_id }}"
-  when:
-    - infra_state == "present"
-    - db_instance is defined
-    - db_instance.instances is defined
-    - db_instance.instances | length > 0
+- name: Wait for SSH on bastion to become available
+  ansible.builtin.wait_for:
+    host: "{{ item.public_ip_address }}"
+    port: 22
+    delay: 10
+    timeout: 320
+    state: started
+  loop: "{{ bastion_instance.instances }}"
+  when: infra_state == "present"
 
 - name: Ensure .ssh directory exists
   ansible.builtin.file:
@@ -238,141 +222,6 @@
   when:
     - infra_state == "present"
     - key_pair_result.changed
-
-- name: Check for existing Bastion instance
-  amazon.aws.ec2_instance_info:
-    region: "{{ aws_region }}"
-    filters:
-      "tag:Project": "{{ project_tag }}"
-      "tag:Role": "Bastion"
-      instance-state-name: ["pending", "running"]
-  register: existing_bastion
-  when: infra_state == "present"
-
-- name: Check for existing Web instance
-  amazon.aws.ec2_instance_info:
-    region: "{{ aws_region }}"
-    filters:
-      "tag:Project": "{{ project_tag }}"
-      "tag:Role": "Web"
-      instance-state-name: ["pending", "running"]
-  register: existing_web
-  when: infra_state == "present"
-
-- name: Check for existing DB instance
-  amazon.aws.ec2_instance_info:
-    region: "{{ aws_region }}"
-    filters:
-      "tag:Project": "{{ project_tag }}"
-      "tag:Role": "DB"
-      instance-state-name: ["pending", "running"]
-  register: existing_db
-  when: infra_state == "present"
-
-- name: Ensure Bastion instance exists
-  amazon.aws.ec2_instance:
-    name: "{{ bastion_tag_name }}"
-    instance_type: "{{ instance_type }}"
-    image_id: "{{ ami_id }}"
-    key_name: "{{ key_name }}"
-    security_group: "{{ bastion_sg_name }}"
-    network:
-      assign_public_ip: true
-    tags:
-      Name: "{{ bastion_tag_name }}"
-      Role: "Bastion"
-      Project: "{{ project_tag }}"
-    exact_count: 1
-    count_tag:
-      Role: "Bastion"
-    vpc_subnet_id: "{{ web_subnet_id | default(omit) }}"
-    state: "{{ infra_state }}"
-    wait: yes
-    region: "{{ aws_region }}"
-  register: bastion_instance
-  when: infra_state == "present" and (existing_bastion.instances | length == 0)
-
-- name: Use existing Bastion instance
-  ansible.builtin.set_fact:
-    bastion_instance: "{{ existing_bastion }}"
-  when: infra_state == "present" and (existing_bastion.instances | length > 0)
-
-- name: Ensure Web instance exists
-  amazon.aws.ec2_instance:
-    name: "{{ web_tag_name }}"
-    instance_type: "{{ instance_type }}"
-    image_id: "{{ ami_id }}"
-    key_name: "{{ key_name }}"
-    security_group: "{{ web_sg_name }}"
-    network:
-      assign_public_ip: true
-    tags:
-      Name: "{{ web_tag_name }}"
-      Role: "Web"
-      Project: "{{ project_tag }}"
-    exact_count: 1
-    count_tag:
-      Role: "Web"
-    vpc_subnet_id: "{{ web_subnet_id | default(omit) }}"
-    state: "{{ infra_state }}"
-    wait: yes
-    region: "{{ aws_region }}"
-  register: web_instance
-  when: infra_state == "present" and (existing_web.instances | length == 0)
-
-- name: Use existing Web instance
-  ansible.builtin.set_fact:
-    web_instance: "{{ existing_web }}"
-  when: infra_state == "present" and (existing_web.instances | length > 0)
-
-- name: Ensure DB instance exists
-  amazon.aws.ec2_instance:
-    name: "{{ db_tag_name }}"
-    instance_type: "{{ instance_type }}"
-    image_id: "{{ ami_id }}"
-    key_name: "{{ key_name }}"
-    security_group: "{{ db_sg_name }}"
-    network:
-      assign_public_ip: false
-    tags:
-      Name: "{{ db_tag_name }}"
-      Role: "DB"
-      Project: "{{ project_tag }}"
-    exact_count: 1
-    count_tag:
-      Role: "DB"
-    vpc_subnet_id: "{{ db_subnet_id | default(omit) }}"
-    state: "{{ infra_state }}"
-    wait: yes
-    region: "{{ aws_region }}"
-  register: db_instance
-  when: infra_state == "present" and (existing_db.instances | length == 0)
-
-- name: Use existing DB instance
-  ansible.builtin.set_fact:
-    db_instance: "{{ existing_db }}"
-  when: infra_state == "present" and (existing_db.instances | length > 0)
-
-- name: Wait for SSH on bastion to become available
-  ansible.builtin.wait_for:
-    host: "{{ item.public_ip_address }}"
-    port: 22
-    delay: 10
-    timeout: 320
-    state: started
-  loop: "{{ bastion_instance.instances }}"
-  when: infra_state == "present"
-
-- name: Pause for 30 seconds to let AWS EC2 inventory catch up
-  ansible.builtin.pause:
-    seconds: 30
-  when: infra_state == "present"
-
-- name: Clear dynamic inventory cache
-  ansible.builtin.file:
-    path: ~/.ansible/tmp/ansible-ec2-*.cache
-    state: absent
-  when: infra_state == "present"
 
 - name: Terminate all instances for this project
   amazon.aws.ec2_instance:
@@ -441,153 +290,3 @@
   retries: 6
   delay: 10
   when: infra_state == "absent"
-
-- name: Update DB security group with Web server access
-  amazon.aws.ec2_security_group:
-    name: "{{ db_sg_name }}"
-    description: "DB SG for {{ project_tag }}"
-    region: "{{ aws_region }}"
-    vpc_id: "{{ vpc_id | default(omit) }}"
-    state: present
-    purge_rules: false
-    rules:
-      - proto: tcp
-        from_port: 3306
-        to_port: 3306
-        group_id: "{{ web_sg_id }}"
-        rule_desc: "Allow MySQL from Web servers"
-  when: infra_state == "present"
-
-- name: Update Web security group with DB access
-  amazon.aws.ec2_security_group:
-    name: "{{ web_sg_name }}"
-    description: "Web SG for {{ project_tag }}"
-    region: "{{ aws_region }}"
-    vpc_id: "{{ vpc_id | default(omit) }}"
-    state: present
-    purge_rules: false
-    rules_egress:
-      - proto: tcp
-        from_port: 3306
-        to_port: 3306
-        group_id: "{{ db_sg_id }}"
-        rule_desc: "Allow MySQL to DB servers"
-      - proto: tcp
-        from_port: 80
-        to_port: 80
-        cidr_ip: "0.0.0.0/0"
-        rule_desc: "Allow HTTP outbound"
-      - proto: tcp
-        from_port: 443
-        to_port: 443
-        cidr_ip: "0.0.0.0/0"
-        rule_desc: "Allow HTTPS outbound"
-  when: infra_state == "present"
-
-- name: Get updated security group info
-  block:
-    - name: Get updated Bastion security group
-      amazon.aws.ec2_security_group_info:
-        region: "{{ aws_region }}"
-        filters:
-          group-name: "{{ bastion_sg_name }}"
-      register: bastion_sg_refresh
-      when: force_update is defined and force_update
-
-    - name: Update bastion_sg fact for force_update
-      ansible.builtin.set_fact:
-        bastion_sg: "{{ bastion_sg_refresh }}"
-      when: force_update is defined and force_update and bastion_sg_refresh.changed
-
-    - name: Get updated Web security group
-      amazon.aws.ec2_security_group_info:
-        region: "{{ aws_region }}"
-        filters:
-          group-name: "{{ web_sg_name }}"
-      register: web_sg_refresh
-      when: force_update is defined and force_update
-
-    - name: Update web_sg fact for force_update
-      ansible.builtin.set_fact:
-        web_sg: "{{ web_sg_refresh }}"
-      when: force_update is defined and force_update and web_sg_refresh.changed
-  when: infra_state == "present"
-
-- name: Create instances with proper conditions
-  block:
-    - name: Create Bastion instance only if none exists
-      amazon.aws.ec2_instance:
-        name: "webdev-bastion"
-        region: "{{ aws_region }}"
-        image_id: "{{ debian_ami_id }}"
-        instance_type: "{{ instance_type }}"
-        key_name: "{{ webdev_key_name }}"
-        security_groups: ["{{ bastion_sg_id }}"]
-        network:
-          assign_public_ip: true
-          subnet_id: "{{ subnet_id | default(omit) }}"
-        state: running
-        wait: true
-        count: 1
-        filters:
-          instance-state-name: ["pending", "running"]
-          "tag:Project": "{{ project_tag }}"
-          "tag:Role": "Bastion"
-        tags:
-          Project: "{{ project_tag }}"
-          Role: "Bastion"
-          Name: "webdev-bastion"
-      register: bastion_instance
-      when: (existing_bastion.instances | length == 0)
-
-    - name: Create Web instance only if none exists
-      amazon.aws.ec2_instance:
-        name: "webdev-web"
-        region: "{{ aws_region }}"
-        image_id: "{{ debian_ami_id }}"
-        instance_type: "{{ instance_type }}"
-        key_name: "{{ webdev_key_name }}"
-        security_groups: ["{{ web_sg_id }}"]
-        network:
-          assign_public_ip: true
-          subnet_id: "{{ subnet_id | default(omit) }}"
-        state: running
-        wait: true
-        count: 1
-        filters:
-          instance-state-name: ["pending", "running"]
-          "tag:Project": "{{ project_tag }}"
-          "tag:Role": "Web"
-        tags:
-          Project: "{{ project_tag }}"
-          Role: "Web"
-          Name: "webdev-web"
-      register: web_instance
-      when: (existing_web.instances | length == 0)
-
-    - name: Create DB instance only if none exists
-      amazon.aws.ec2_instance:
-        name: "webdev-db"
-        region: "{{ aws_region }}"
-        image_id: "{{ debian_ami_id }}"
-        instance_type: "{{ instance_type }}"
-        key_name: "{{ webdev_key_name }}"
-        security_groups: ["{{ db_sg_id }}"]
-        network:
-          assign_public_ip: false
-          subnet_id: "{{ subnet_id | default(omit) }}"
-        state: running
-        wait: true
-        count: 1
-        filters:
-          instance-state-name: ["pending", "running"]
-          "tag:Project": "{{ project_tag }}"
-          "tag:Role": "DB"
-        tags:
-          Project: "{{ project_tag }}"
-          Role: "DB"
-          Name: "webdev-db"
-      register: db_instance
-      when: (existing_db.instances | length == 0)
-  when: infra_state == "present"
-

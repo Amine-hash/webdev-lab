@@ -140,15 +140,6 @@
         ('Emmanuel', 'Druon');
   tags: [db]
 
-- name: Configure remote access bind-address using sed
-  ansible.builtin.lineinfile:
-    path: /etc/mysql/mariadb.conf.d/50-server.cnf
-    regexp: '^bind-address\s*='
-    line: 'bind-address = 0.0.0.0'
-    backup: yes
-  notify: restart mariadb
-  tags: [db]
-
 - name: Ensure MariaDB is running and enabled
   ansible.builtin.service:
     name: mariadb
@@ -160,14 +151,6 @@
   ansible.builtin.wait_for:
     port: 3306
     timeout: 30
-  tags: [db]
-
-- name: Verify MariaDB network accessibility using ss
-  ansible.builtin.shell:
-    cmd: ss -tuln | grep :3306
-  register: mysql_listening
-  changed_when: false
-  ignore_errors: yes
   tags: [db]
 
 - name: Allow MariaDB port in UFW
