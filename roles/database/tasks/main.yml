@@ -152,21 +152,3 @@
     port: 3306
     timeout: 30
   tags: [db]
-
-- name: Allow MariaDB port in UFW
-  ansible.builtin.ufw:
-    rule: allow
-    port: 3306
-    proto: tcp
-  tags: [db]
-
-- name: Get UFW status
-  ansible.builtin.command: ufw status
-  register: ufw_status
-  changed_when: false
-  tags: [db]
-
-- name: Display UFW status
-  ansible.builtin.debug:
-    var: ufw_status.stdout_lines
-  tags: [db]
