@@ -270,7 +270,6 @@
 - name: Remove cross-references in security groups
   amazon.aws.ec2_security_group:
     name: "{{ item }}"
-    description: "Cleaning security group"
     region: "{{ aws_region }}"
     state: present
     rules: []
