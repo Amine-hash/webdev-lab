@@ -85,12 +85,16 @@
     timeout: 30
   tags: [db]
 
-- name: Create database user with two separate commands
+- name: Create database user
   community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
-    query: |
-      CREATE USER IF NOT EXISTS '{{ db_user }}'@'%' IDENTIFIED BY '{{ db_password }}';
-      GRANT ALL ON *.* TO '{{ db_user }}'@'%' WITH GRANT OPTION;
+    query: "CREATE USER IF NOT EXISTS '{{ db_user }}'@'%' IDENTIFIED BY '{{ db_password }}';"
+  tags: [db]
+
+- name: Grant privileges to database user
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    query: "GRANT ALL ON *.* TO '{{ db_user }}'@'%' WITH GRANT OPTION;"
   tags: [db]
 
 - name: Flush privileges
