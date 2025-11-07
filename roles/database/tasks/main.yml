@@ -124,7 +124,6 @@
 
 - name: Wait for MariaDB TCP port to be reachable
   ansible.builtin.wait_for:
-    host: "{{ ansible_default_ipv4.address }}"
     port: "{{ db_port }}"
     timeout: 60
   tags: [db]
