@@ -126,9 +126,9 @@
       Role: "Bastion"
       Project: "{{ project_tag }}"
     exact_count: 1
-    count_tag:
-      Role: "Bastion"
-      Project: "{{ project_tag }}"
+    filters:
+      "tag:Project": "{{ project_tag }}"
+      "tag:Role": "Bastion"
     vpc_subnet_id: "{{ web_subnet_id | default(omit) }}"
     state: "{{ infra_state }}"
     wait: yes
@@ -150,9 +150,9 @@
       Role: "Web"
       Project: "{{ project_tag }}"
     exact_count: 1
-    count_tag:
-      Role: "Web"
-      Project: "{{ project_tag }}"
+    filters:
+      "tag:Project": "{{ project_tag }}"
+      "tag:Role": "Web"
     vpc_subnet_id: "{{ web_subnet_id | default(omit) }}"
     state: "{{ infra_state }}"
     wait: yes
@@ -174,9 +174,9 @@
       Role: "DB"
       Project: "{{ project_tag }}"
     exact_count: 1
-    count_tag:
-      Role: "DB"
-      Project: "{{ project_tag }}"
+    filters:
+      "tag:Project": "{{ project_tag }}"
+      "tag:Role": "DB"
     vpc_subnet_id: "{{ db_subnet_id | default(omit) }}"
     state: "{{ infra_state }}"
     wait: yes
