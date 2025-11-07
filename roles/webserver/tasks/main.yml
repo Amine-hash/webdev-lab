@@ -25,12 +25,6 @@
     cache_valid_time: 3600
   tags: [web]
 
-- name: Install PyMySQL using pip
-  ansible.builtin.pip:
-    name: PyMySQL
-    state: present
-  tags: [web]
-
 - name: Install apache2 and headers module
   ansible.builtin.apt:
     name: apache2
