@@ -134,37 +134,6 @@
     - infra_state == "present"
     - bastion_info.instances | length == 0
 
-[ERROR]: Task failed: Finalization of task args for 'ansible.builtin.set_fact' failed: Error while resolving value for 'bastion_public_ip': object of type 'dict' has no attribute 'instances'
-
-Task failed.
-Origin: /home/admin/webdev-lab/roles/infra/tasks/main.yml:137:3
-
-135     - bastion_info.instances | length == 0
-136
-137 - name: Determine Bastion public IP
-      ^ column 3
-
-<<< caused by >>>
-
-Finalization of task args for 'ansible.builtin.set_fact' failed.
-Origin: /home/admin/webdev-lab/roles/infra/tasks/main.yml:138:3
-
-136
-137 - name: Determine Bastion public IP
-138   ansible.builtin.set_fact:
-      ^ column 3
-
-<<< caused by >>>
-
-Error while resolving value for 'bastion_public_ip': object of type 'dict' has no attribute 'instances'
-Origin: /home/admin/webdev-lab/roles/infra/tasks/main.yml:139:24
-
-137 - name: Determine Bastion public IP
-138   ansible.builtin.set_fact:
-139     bastion_public_ip: >-
-                           ^ column 24
-
-fatal: [localhost]: FAILED! => {"changed": false, "msg": "Task failed: Finalization of task args for 'ansible.builtin.set_fact' failed: Error while resolving value for 'bastion_public_ip': object of type 'dict' has no attribute 'instances'"}
 - name: Determine Bastion public IP from newly created instance
   ansible.builtin.set_fact:
     bastion_public_ip: "{{ bastion_instance.instances[0].public_ip_address }}"
