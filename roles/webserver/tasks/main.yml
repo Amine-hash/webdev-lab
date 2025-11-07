@@ -1,5 +1,4 @@
 ---
-# Install and configure Apache web server
 - name: Update APT and upgrade system (Web)
   ansible.builtin.apt:
     update_cache: yes
@@ -73,7 +72,6 @@
   notify: restart apache
   tags: [web]
 
-# Rest of the web server configuration
 - name: Ensure /var/www/html exists with correct permissions
   ansible.builtin.file:
     path: /var/www/html

@@ -18,7 +18,6 @@ Host webdev-*
     UserKnownHostsFile /dev/null
     ForwardAgent yes
 
-# Handle all private IP addresses in the VPC through bastion
 Host 172.31.*
     IdentityFile {{ ansible_ssh_private_key_file }}
     User {{ ansible_user }}
@@ -27,12 +26,10 @@ Host 172.31.*
     UserKnownHostsFile /dev/null
     ForwardAgent yes
 
-# Alias for web server
 Host webdev-web
     HostName {{ hostvars[groups['tag_Role_Web'][0]].private_ip_address }}
     ProxyCommand ssh -W %h:%p {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}
 
-# Alias for db server
 Host webdev-db
     HostName {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}
     ProxyCommand ssh -W %h:%p {{ ansible_user }}@{{ hostvars[groups['tag_Role_Bastion'][0]].public_ip_address }}

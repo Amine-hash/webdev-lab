@@ -1,7 +1,7 @@
 ---
 - name: Infra AWS Web Dev Lab
   hosts: localhost
-  gather_facts: yes  # Important d'avoir les facts pour localhost
+  gather_facts: yes
   roles:
     - infra
 
@@ -18,7 +18,7 @@
 - name: Configure Bastion host
   hosts: tag_Role_Bastion
   become: yes
-  gather_facts: yes  # Important d'avoir les facts pour la config SSH
+  gather_facts: yes
   roles:
     - bastion
 
@@ -34,7 +34,6 @@
       pause:
         seconds: 5
       when: "'tag_Role_Bastion' in groups"
-
     - name: Clear dynamic inventory cache
       ansible.builtin.file:
         path: ~/.ansible/tmp/ansible-ec2-*.cache
@@ -47,13 +46,13 @@
 - name: Configure Database servers
   hosts: tag_Role_DB
   become: yes
-  gather_facts: yes  # Important d'avoir les facts pour la config réseau
+  gather_facts: yes
   roles:
     - database
 
 - name: Configure Web servers
   hosts: tag_Role_Web
   become: yes
-  gather_facts: yes  # Important d'avoir les facts pour la config réseau
+  gather_facts: yes
   roles:
     - webserver

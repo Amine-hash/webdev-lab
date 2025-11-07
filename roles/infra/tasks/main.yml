@@ -5,7 +5,7 @@
     region: "{{ aws_region }}"
     vpc_id: "{{ vpc_id | default(omit) }}"
     state: "{{ infra_state }}"
-    purge_rules: no  # Ne pas purger les règles existantes pour éviter une recréation
+    purge_rules: no
     rules:
       - proto: tcp
         from_port: 22
@@ -34,7 +34,7 @@
     region: "{{ aws_region }}"
     vpc_id: "{{ vpc_id | default(omit) }}"
     state: "{{ infra_state }}"
-    purge_rules: no  # Ne pas purger les règles existantes
+    purge_rules: no
     rules:
       - proto: tcp
         from_port: 80
@@ -72,7 +72,7 @@
     region: "{{ aws_region }}"
     vpc_id: "{{ vpc_id | default(omit) }}"
     state: "{{ infra_state }}"
-    purge_rules: no  # Ne pas purger les règles existantes
+    purge_rules: no
     rules:
       - proto: tcp
         from_port: 22
@@ -103,7 +103,6 @@
     db_sg_id: "{{ db_sg.group_id }}"
   when: infra_state == "present" and db_sg.group_id is defined
 
-# Instance creation
 - name: Launch instances
   block:
     - name: Get instances info
@@ -163,7 +162,6 @@
       when: not (existing_instances.instances | selectattr('tags.Role', 'equalto', 'DB') | list)
   when: infra_state == "present"
 
-# Set instance IDs from created or existing instances
 - name: Set bastion_instance_id from existing instance
   ansible.builtin.set_fact:
     bastion_instance_id: "{{ existing_instances.instances | selectattr('tags.Role', 'equalto', 'Bastion') | map(attribute='instance_id') | first }}"
@@ -212,8 +210,6 @@
     - db_instance.instances is defined
     - db_instance.instances | length > 0
 
-# ---- Key Pair ----
-
 - name: Ensure .ssh directory exists
   ansible.builtin.file:
     path: "/home/admin/.ssh"
@@ -228,7 +224,7 @@
     name: "{{ webdev_key_name }}"
     region: "{{ aws_region }}"
     state: present
-    force: false  # Don't replace if it exists
+    force: false
   register: key_pair_result
   when: infra_state == "present"
 
@@ -242,8 +238,6 @@
   when:
     - infra_state == "present"
     - key_pair_result.changed
-
-# ---- Check existing instances ----
 
 - name: Check for existing Bastion instance
   amazon.aws.ec2_instance_info:
@@ -274,8 +268,6 @@
       instance-state-name: ["pending", "running"]
   register: existing_db
   when: infra_state == "present"
-
-# ---- Instances (present) ----
 
 - name: Ensure Bastion instance exists
   amazon.aws.ec2_instance:
@@ -382,8 +374,6 @@
     state: absent
   when: infra_state == "present"
 
-# === Mode destruction ======================================
-
 - name: Terminate all instances for this project
   amazon.aws.ec2_instance:
     region: "{{ aws_region }}"
@@ -398,7 +388,6 @@
     seconds: 30
   when: infra_state == "absent"
 
-# Supprimer les règles de sécurité inter-groupes d'abord
 - name: Remove cross-references in security groups
   amazon.aws.ec2_security_group:
     name: "{{ item }}"
@@ -420,7 +409,6 @@
     seconds: 10
   when: infra_state == "absent"
 
-# On supprime les SG dans l'ordre DB -> Web -> Bastion avec gestion des erreurs
 - name: Delete DB security group
   amazon.aws.ec2_security_group:
     name: "{{ db_sg_name }}"
@@ -454,7 +442,6 @@
   delay: 10
   when: infra_state == "absent"
 
-# Update Security Groups for MySQL connectivity
 - name: Update DB security group with Web server access
   amazon.aws.ec2_security_group:
     name: "{{ db_sg_name }}"
@@ -604,4 +591,3 @@
       when: (existing_db.instances | length == 0)
   when: infra_state == "present"
 
-# Ensure instances are accessible

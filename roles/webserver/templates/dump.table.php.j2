@@ -9,14 +9,12 @@
     $database = "{{ db_name }}";
     $user = "{{ db_user }}";
     $pass = "{{ db_password }}";
-
     $conn = new mysqli($host, $user, $pass, $database);
     if ($conn->connect_errno) {
         printf("Connection to database failed: %s<br>", $conn->connect_error);
         exit();
     }
     echo "Here is the list of Users from the Database $database<br>";
-
     $sql = "SELECT LastName, FirstName FROM Users";
     $result = $conn->query($sql);
     if ($result && $result->num_rows > 0) {

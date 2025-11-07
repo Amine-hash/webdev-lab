@@ -1,10 +1,9 @@
 ---
-# System update and package installation
 - name: Update apt cache and upgrade packages
   ansible.builtin.apt:
     update_cache: yes
     upgrade: dist
-    cache_valid_time: 3600  # Cache valide pendant 1h
+    cache_valid_time: 3600
   tags: [bastion]
 
 - name: Install admin tools on bastion
@@ -27,7 +26,6 @@
     install_recommends: yes
   tags: [bastion]
 
-# SSH hardening
 - name: Harden SSH configuration (no root login, no password auth)
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
@@ -49,7 +47,6 @@
     enabled: yes
   tags: [bastion]
 
-# SSH key setup
 - name: Ensure .ssh directory exists with correct permissions
   ansible.builtin.file:
     path: "/home/{{ ansible_user }}/.ssh"
@@ -66,7 +63,7 @@
     mode: '0600'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    force: yes  # La clé doit toujours être à jour
+    force: yes
   tags: [bastion]
 
 - name: Configure SSH client for proxy access
@@ -76,6 +73,6 @@
     mode: '0600'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    force: no  # Ne pas écraser si identique
+    force: no
   notify: restart ssh
   tags: [bastion]

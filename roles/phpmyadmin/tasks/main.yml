@@ -24,8 +24,8 @@
     name: "{{ phpmyadmin_container_name }}"
     image: phpmyadmin
     restart_policy: unless-stopped
-    recreate: no  # Ne pas recréer si la configuration est la même
-    force_kill: no  # Arrêt propre si nécessaire
+    recreate: no
+    force_kill: no
     env:
       PMA_ARBITRARY: "1"
       PMA_HOST: "localhost"

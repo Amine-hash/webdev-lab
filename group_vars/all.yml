@@ -1,41 +1,22 @@
-# AWS Region
 aws_region: "us-east-1"
-
-# Instance AMI
 debian_ami_id: "ami-058bd2d568351da34"
-
-# Instance type
 instance_type: "t2.micro"
-
-# Project identification
 project_tag: "webdev"
-
-# Access configuration
-ssh_cidr: "0.0.0.0/0"  # Allow SSH access from anywhere for demonstration
-web_http_cidr: "0.0.0.0/0"  # Allow HTTP access from anywhere
+ssh_cidr: "0.0.0.0/0"
+web_http_cidr: "0.0.0.0/0"
 webdev_key_name: "vockey"
-
-# Security group names
 bastion_sg_name: "webdev-bastion-sg"
 web_sg_name: "webdev-web-sg"
 db_sg_name: "webdev-db-sg"
-
-# Web server configuration
 web_user: "www-data"
 web_group: "www-data"
-
-# Database configuration
 db_name: "Test1"
 db_user: "admin"
 db_password: "IG2IUser"
 db_port: 3306
 db_host: "{{ groups['tag_Role_DB'][0] }}"
-
-# SSH configuration
 ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
 ansible_user: admin
-
-# Common SSH arguments for all hosts
 ansible_ssh_common_args: >-
   -o StrictHostKeyChecking=no 
   -o UserKnownHostsFile=/dev/null

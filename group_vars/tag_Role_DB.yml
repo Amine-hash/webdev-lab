@@ -1,11 +1,8 @@
 ---
-# Database configuration
 db_name: "Test1"
 db_user: "admin"
 db_password: "IG2IUser"
 db_port: 3306
-
-# SSH configuration for DB servers
 ansible_ssh_common_args: >-
   -o StrictHostKeyChecking=no 
   -o UserKnownHostsFile=/dev/null 
