@@ -1,18 +1,9 @@
-# Ansible Configuration
-ansible_python_interpreter: /usr/bin/python3
-ansible_user: admin
-ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
-ansible_ssh_common_args: >-
-  -o StrictHostKeyChecking=no 
-  -o UserKnownHostsFile=/dev/null
-  -o ForwardAgent=yes
-
 # AWS Configuration
 aws_region: us-east-1
 project_tag: webdev
 instance_type: t2.micro
 debian_ami_id: ami-058bd2d568351da34
-webdev_key_name: "vockey"  # Key pair name in AWS
+webdev_key_name: "vockey"
 
 # Security Groups
 bastion_sg_name: "{{ project_tag }}-bastion-sg"
@@ -22,6 +13,15 @@ db_sg_name: "{{ project_tag }}-db-sg"
 # Network Access
 ssh_cidr: 0.0.0.0/0
 web_http_cidr: 0.0.0.0/0
+
+# SSH Configuration
+ansible_python_interpreter: /usr/bin/python3
+ansible_user: admin
+ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
+ansible_ssh_common_args: >-
+  -o StrictHostKeyChecking=no 
+  -o UserKnownHostsFile=/dev/null
+  -o ForwardAgent=yes
 
 # Web Server Configuration
 web_user: www-data

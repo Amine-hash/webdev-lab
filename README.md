@@ -76,6 +76,123 @@ ansible-playbook -i inventory_aws_ec2.yml site.yml -e "infra_state=present"
 ansible-playbook -i localhost, destroy.yml
 ```
 
+## Configuration Guide
+
+### Core Variables (group_vars/all.yml)
+
+1. **AWS Configuration**
+```yaml
+# AWS Region
+aws_region: us-east-1          # Change to your preferred region
+project_tag: webdev           # Used for resource tagging and identification
+
+# Instance Configuration
+instance_type: t2.micro       # Change based on your needs (e.g., t2.small, t2.medium)
+debian_ami_id: ami-123456     # Update with your region's Debian AMI ID
+```
+
+2. **Security Configuration**
+```yaml
+# Access Control
+ssh_cidr: 0.0.0.0/0          # Restrict to your IP range (e.g., 203.0.113.0/24)
+web_http_cidr: 0.0.0.0/0     # Restrict if needed (e.g., corporate network)
+
+# SSH Access
+ansible_user: admin          # EC2 instance username
+ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"  # Path to your key
+```
+
+3. **Database Configuration**
+```yaml
+# MariaDB Settings
+db_name: Test1              # Your database name
+db_user: admin             # Database admin username
+db_password: IG2IUser      # Change this to a secure password
+db_port: 3306              # Change if needed
+```
+
+### Instance Naming
+
+Security groups and instances are automatically named using this pattern:
+- Bastion: `{{ project_tag }}-bastion-sg`
+- Web: `{{ project_tag }}-web-sg`
+- DB: `{{ project_tag }}-db-sg`
+
+Example with `project_tag: myproject`:
+- `myproject-bastion-sg`
+- `myproject-web-sg`
+- `myproject-db-sg`
+
+### AWS Inventory Configuration (inventory_aws_ec2.yml)
+
+```yaml
+plugin: aws_ec2
+regions:
+  - us-east-1               # Match with aws_region in all.yml
+filters:
+  tag:Project: webdev       # Match with project_tag in all.yml
+  instance-state-name: ["running"]
+```
+
+### Security Customization
+
+1. **Bastion Access**
+   - Edit `ssh_cidr` in `all.yml` to restrict SSH access:
+   ```yaml
+   ssh_cidr: 203.0.113.0/24  # Your office/home IP range
+   ```
+
+2. **Web Access**
+   - Edit `web_http_cidr` in `all.yml` to restrict HTTP access:
+   ```yaml
+   web_http_cidr: 10.0.0.0/8  # Your corporate network
+   ```
+
+3. **Database Security**
+   - Change default credentials in `all.yml`:
+   ```yaml
+   db_user: myapp
+   db_password: "Strong-Password-Here"
+   ```
+
+### Instance Type Selection
+
+Choose instance types based on your needs:
+```yaml
+instance_type: t2.micro    # Development/Testing
+# OR
+instance_type: t2.small    # Small production
+# OR
+instance_type: t2.medium   # Medium production
+```
+
+Cost considerations (as of November 2025):
+- t2.micro: Free tier eligible
+- t2.small: $0.023 per hour
+- t2.medium: $0.0464 per hour
+
+### Custom AMI Selection
+
+To use a different Debian AMI:
+1. Visit AWS AMI Catalog
+2. Search for Debian images in your region
+3. Copy the AMI ID
+4. Update in `all.yml`:
+```yaml
+debian_ami_id: ami-your-chosen-id
+```
+
+### Network Configuration
+
+By default, instances use the default VPC. To use a custom VPC:
+1. Create your VPC in AWS
+2. Add to `all.yml`:
+```yaml
+vpc_id: vpc-xxxxx
+web_subnet_id: subnet-xxxxx
+db_subnet_id: subnet-yyyyy
+```
+
 ## Components
 
 ### Bastion Host
