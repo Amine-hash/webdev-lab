@@ -78,13 +78,24 @@
     enabled: true
   tags: [db]
 
-- name: Grant remote access to database user
+- name: Create database user
   community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
-    query: |
+    query: >
       CREATE USER IF NOT EXISTS '{{ db_user }}'@'%' IDENTIFIED BY '{{ db_password }}';
-      GRANT ALL PRIVILEGES ON *.* TO '{{ db_user }}'@'%' WITH GRANT OPTION;
-      FLUSH PRIVILEGES;
+  tags: [db]
+
+- name: Grant privileges to database user
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    query: >
+      GRANT ALL ON *.* TO '{{ db_user }}'@'%' WITH GRANT OPTION;
+  tags: [db]
+
+- name: Flush privileges
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    query: FLUSH PRIVILEGES;
   tags: [db]
 
 - name: Create database
@@ -118,10 +129,11 @@
   tags: [db]
 
 - name: Verify MariaDB network accessibility
-  ansible.builtin.command:
-    cmd: ss -tuln | grep :3306
+  ansible.builtin.shell:
+    cmd: ss -tuln | grep :3306 || netstat -tuln | grep :3306
   register: mysql_listening
   changed_when: false
+  ignore_errors: yes
   tags: [db]
 
 - name: Allow MariaDB port in UFW
