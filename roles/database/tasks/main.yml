@@ -113,9 +113,18 @@
         ('Emmanuel', 'Druon');
   tags: [db]
 
+- name: Deploy my.cnf for mysql client
+  ansible.builtin.template:
+    src: my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: '0600'
+  tags: [db]
+
 - name: Wait for MariaDB TCP port to be reachable
   ansible.builtin.wait_for:
-    host: 0.0.0.0
+    host: "{{ ansible_default_ipv4.address }}"
     port: "{{ db_port }}"
     timeout: 60
   tags: [db]

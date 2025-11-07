@@ -1,20 +1,13 @@
-aws_region: "us-east-1"
-debian_ami_id: "ami-058bd2d568351da34"
-instance_type: "t2.micro"
-project_tag: "webdev"
-ssh_cidr: "0.0.0.0/0"
-web_http_cidr: "0.0.0.0/0"
+aws_region: us-east-1
+project_tag: webdev
+instance_type: t2.micro
+debian_ami_id: ami-058bd2d568351da34
+bastion_sg_name: "{{ project_tag }}-bastion-sg"
+web_sg_name: "{{ project_tag }}-web-sg"
+db_sg_name: "{{ project_tag }}-db-sg"
+ssh_cidr: 0.0.0.0/0
+web_http_cidr: 0.0.0.0/0
 webdev_key_name: "vockey"
-bastion_sg_name: "webdev-bastion-sg"
-web_sg_name: "webdev-web-sg"
-db_sg_name: "webdev-db-sg"
-web_user: "www-data"
-web_group: "www-data"
-db_name: "Test1"
-db_user: "admin"
-db_password: "IG2IUser"
-db_port: 3306
-db_host: "{{ groups['tag_Role_DB'][0] }}"
 ansible_ssh_private_key_file: "/home/admin/.ssh/labsuser.pem"
 ansible_user: admin
 ansible_ssh_common_args: >-
@@ -22,3 +15,10 @@ ansible_ssh_common_args: >-
   -o UserKnownHostsFile=/dev/null
   -o ForwardAgent=yes
 ansible_python_interpreter: /usr/bin/python3
+web_user: www-data
+web_group: www-data
+db_name: Test1
+db_user: admin
+db_password: IG2IUser
+db_port: 3306
+db_host: "{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}"

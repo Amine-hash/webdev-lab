@@ -120,16 +120,19 @@
 
 - name: Wait for database to be reachable
   ansible.builtin.wait_for:
-    host: "{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}"
+    host: "{{ db_host }}"
     port: 3306
-    timeout: 60
+    timeout: 30
     connect_timeout: 5
-    delay: 5
+  register: wait_db
+  until: wait_db is success
+  retries: 6
+  delay: 5
   tags: [web]
 
 - name: Test database connectivity with mysql client
   ansible.builtin.shell: |
-    mysql -h {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }} -u {{ db_user }} -p'{{ db_password }}' -e 'SELECT 1;' {{ db_name }}
+    mysql -h {{ db_host }} -u {{ db_user }} -p'{{ db_password }}' -e 'SELECT 1;' {{ db_name }}
   register: mysql_test
   changed_when: false
   ignore_errors: yes
@@ -151,7 +154,7 @@
 
 - name: Test database port with netcat
   ansible.builtin.shell: |
-    nc -zv {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }} 3306
+    nc -zv {{ db_host }} 3306
   register: nc_result
   changed_when: false
   ignore_errors: yes
