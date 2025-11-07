@@ -41,7 +41,6 @@
       when: "'tag_Role_Bastion' in groups"
     - name: Refresh inventory after bastion configuration
       meta: refresh_inventory
-      when: "'tag_Role_Bastion' in groups"
 
 - name: Configure Database servers
   hosts: tag_Role_DB

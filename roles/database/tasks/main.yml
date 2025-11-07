@@ -1,10 +1,4 @@
 ---
-- name: Check if MariaDB is already configured
-  ansible.builtin.stat:
-    path: /var/lib/mysql/{{ db_name }}
-  register: db_configured
-  tags: [db]
-
 - name: Update APT and upgrade system (DB)
   ansible.builtin.apt:
     update_cache: yes
@@ -24,65 +18,44 @@
     cache_valid_time: 3600
   tags: [db]
 
-- name: Ensure mysql directories exist with correct permissions
+- name: Ensure mysql run directory exists
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: /var/run/mysqld
     state: directory
     owner: mysql
     group: mysql
     mode: '0755'
-  with_items:
-    - /var/run/mysqld
-    - /var/lib/mysql
-    - /var/log/mysql
   tags: [db]
 
-- name: Configure MariaDB to listen on all interfaces
-  ansible.builtin.template:
-    src: mariadb.cnf.j2
-    dest: /etc/mysql/mariadb.conf.d/50-server.cnf
-    owner: root
-    group: root
-    mode: '0644'
+- name: Ensure MariaDB listens on all interfaces
+  ansible.builtin.lineinfile:
+    path: /etc/mysql/mariadb.conf.d/50-server.cnf
+    regexp: '^bind-address'
+    line: 'bind-address            = 0.0.0.0'
+    insertafter: '^\[mysqld\]'
   notify: restart mariadb
   tags: [db]
 
-- name: Stop MariaDB service
-  ansible.builtin.service:
-    name: mariadb
-    state: stopped
+- name: Ensure MariaDB listens on configured port
+  ansible.builtin.lineinfile:
+    path: /etc/mysql/mariadb.conf.d/50-server.cnf
+    regexp: '^port\s*='
+    line: "port                    = {{ db_port }}"
+    insertafter: '^bind-address'
+  notify: restart mariadb
   tags: [db]
 
-- name: Clear existing locks and temporary files
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  with_items:
-    - /var/lib/mysql/aria_log_control
-    - /var/run/mysqld/mysqld.pid
-    - /var/lib/mysql/mysql.sock
-    - /var/lib/mysql/ibdata1.lck
-  ignore_errors: yes
-  tags: [db]
-
-- name: Initialize MariaDB data directory if needed
-  ansible.builtin.command:
-    cmd: mysql_install_db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
-    creates: /var/lib/mysql/mysql
-  become: yes
-  tags: [db]
-
-- name: Start MariaDB service
+- name: Ensure MariaDB service is started and enabled
   ansible.builtin.service:
     name: mariadb
     state: started
     enabled: true
   tags: [db]
 
-- name: Wait for MariaDB service to be ready
+- name: Wait for MariaDB UNIX socket
   ansible.builtin.wait_for:
     path: /var/run/mysqld/mysqld.sock
-    timeout: 30
+    timeout: 60
   tags: [db]
 
 - name: Create database user
@@ -140,50 +113,17 @@
         ('Emmanuel', 'Druon');
   tags: [db]
 
-- name: Configure remote access bind-address using sed
-  ansible.builtin.lineinfile:
-    path: /etc/mysql/mariadb.conf.d/50-server.cnf
-    regexp: '^bind-address\s*='
-    line: 'bind-address = 0.0.0.0'
-    backup: yes
-  notify: restart mariadb
+- name: Deploy my.cnf for mysql client
+  ansible.builtin.template:
+    src: my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: '0600'
   tags: [db]
 
-- name: Ensure MariaDB is running and enabled
-  ansible.builtin.service:
-    name: mariadb
-    state: restarted
-    enabled: yes
-  tags: [db]
-
-- name: Wait for MariaDB to be reachable
+- name: Wait for MariaDB TCP port to be reachable
   ansible.builtin.wait_for:
-    port: 3306
-    timeout: 30
-  tags: [db]
-
-- name: Verify MariaDB network accessibility using ss
-  ansible.builtin.shell:
-    cmd: ss -tuln | grep :3306
-  register: mysql_listening
-  changed_when: false
-  ignore_errors: yes
-  tags: [db]
-
-- name: Allow MariaDB port in UFW
-  ansible.builtin.ufw:
-    rule: allow
-    port: 3306
-    proto: tcp
-  tags: [db]
-
-- name: Get UFW status
-  ansible.builtin.command: ufw status
-  register: ufw_status
-  changed_when: false
-  tags: [db]
-
-- name: Display UFW status
-  ansible.builtin.debug:
-    var: ufw_status.stdout_lines
+    port: "{{ db_port }}"
+    timeout: 60
   tags: [db]

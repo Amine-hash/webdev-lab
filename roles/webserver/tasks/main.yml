@@ -24,12 +24,6 @@
     cache_valid_time: 3600
   tags: [web]
 
-- name: Install apache2 and headers module
-  ansible.builtin.apt:
-    name: apache2
-    state: present
-  tags: [web]
-
 - name: Remove old security headers from security.conf
   ansible.builtin.lineinfile:
     path: /etc/apache2/conf-enabled/security.conf
@@ -126,21 +120,19 @@
 
 - name: Wait for database to be reachable
   ansible.builtin.wait_for:
-    host: "{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}"
+    host: "{{ db_host }}"
     port: 3306
-    timeout: 300
+    timeout: 30
     connect_timeout: 5
-    delay: 10
-    sleep: 5
   register: wait_db
   until: wait_db is success
   retries: 6
-  delay: 10
+  delay: 5
   tags: [web]
 
 - name: Test database connectivity with mysql client
   ansible.builtin.shell: |
-    mysql -h {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }} -u {{ db_user }} -p'{{ db_password }}' -e 'SELECT 1;' {{ db_name }}
+    mysql -h {{ db_host }} -u {{ db_user }} -p'{{ db_password }}' -e 'SELECT 1;' {{ db_name }}
   register: mysql_test
   changed_when: false
   ignore_errors: yes
@@ -162,7 +154,7 @@
 
 - name: Test database port with netcat
   ansible.builtin.shell: |
-    nc -zv {{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }} 3306
+    nc -zv {{ db_host }} 3306
   register: nc_result
   changed_when: false
   ignore_errors: yes
@@ -177,7 +169,7 @@
   ansible.builtin.copy:
     content: |
       <?php
-      $conn = new mysqli("{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}", "{{ db_user }}", "{{ db_password }}", "{{ db_name }}");
+      $conn = new mysqli("{{ db_host }}", "{{ db_user }}", "{{ db_password }}", "{{ db_name }}");
       if ($conn->connect_error) {
         echo "Connection failed: " . $conn->connect_error;
         exit(1);

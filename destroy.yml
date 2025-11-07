@@ -1,0 +1,11 @@
+---
+# Playbook to destroy all AWS infrastructure components
+# Usage: ansible-playbook -i localhost, destroy.yml
+
+- name: Destroy AWS Web Dev Lab Infrastructure
+  hosts: localhost
+  gather_facts: yes
+  vars:
+    infra_state: absent
+  roles:
+    - infra
