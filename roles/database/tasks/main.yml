@@ -11,12 +11,13 @@
     cache_valid_time: 3600  # Add cache validity
   tags: [db]
 
-- name: Install MariaDB and PyMySQL
+- name: Install MariaDB and required packages
   ansible.builtin.apt:
     name:
       - mariadb-server
       - python3-pymysql
       - net-tools
+      - iproute2
     state: present
     update_cache: yes
     cache_valid_time: 3600
@@ -32,112 +33,10 @@
   with_items:
     - /var/run/mysqld
     - /var/lib/mysql
+    - /var/log/mysql
   tags: [db]
 
-- name: Stop MariaDB before repair
-  ansible.builtin.service:
-    name: mariadb
-    state: stopped
-  tags: [db]
-
-- name: Check and repair MySQL tables
-  ansible.builtin.command:
-    cmd: "mysqlcheck -A --repair --use-frm"
-  ignore_errors: yes
-  tags: [db]
-
-- name: Copy repair script
-  ansible.builtin.copy:
-    src: repair_tables.sh
-    dest: /usr/local/bin/repair_tables.sh
-    mode: '0755'
-    owner: root
-    group: root
-  tags: [db]
-
-- name: Run repair script
-  ansible.builtin.command:
-    cmd: /usr/local/bin/repair_tables.sh
-  register: repair_result
-  ignore_errors: yes
-  tags: [db]
-
-- name: Debug repair results
-  ansible.builtin.debug:
-    var: repair_result
-  tags: [db]
-
-- name: Initialize MariaDB data directory if needed
-  ansible.builtin.command:
-    cmd: mariadb-install-db --user=mysql
-    creates: /var/lib/mysql/mysql
-  become: yes
-  tags: [db]
-
-# Configuration de bind-address déplacée vers le template mariadb.cnf.j2
-
-- name: Ensure MariaDB is started and enabled
-  ansible.builtin.service:
-    name: mariadb
-    state: started
-    enabled: yes
-  tags: [db]
-
-- name: Wait for MariaDB to be ready
-  ansible.builtin.wait_for:
-    path: /var/run/mysqld/mysqld.sock
-    state: present
-    timeout: 30
-  tags: [db]
-
-- name: Create database
-  community.mysql.mysql_db:
-    name: "{{ db_name }}"
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-  register: db_created
-  tags: [db]
-
-- name: Drop anonymous users
-  community.mysql.mysql_user:
-    name: ''
-    host_all: yes
-    state: absent
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-  tags: [db]
-
-- name: Create database user with privileges
-  community.mysql.mysql_user:
-    name: "{{ db_user }}"
-    password: "{{ db_password }}"
-    priv: "{{ db_name }}.*:ALL"
-    host: "%"
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-  tags: [db]
-
-- name: Ensure root can login from anywhere
-  community.mysql.mysql_user:
-    name: root
-    host: "%"
-    state: present
-    check_implicit_admin: yes
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-  tags: [db]
-
-- name: Create .my.cnf file for root
-  ansible.builtin.template:
-    src: my.cnf.j2
-    dest: /root/.my.cnf
-    mode: '0600'
-    owner: root
-    group: root
-  tags: [db]
-
-- name: Create MariaDB network configuration
+- name: Configure MariaDB to listen on all interfaces
   ansible.builtin.template:
     src: mariadb.cnf.j2
     dest: /etc/mysql/mariadb.conf.d/50-server.cnf
@@ -147,28 +46,7 @@
   notify: restart mariadb
   tags: [db]
 
-- name: Check MariaDB service status
-  ansible.builtin.service:
-    name: mariadb
-    state: started
-  register: mariadb_status
-  tags: [db]
-
-- name: Check database connectivity
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-    query: SELECT VERSION()
-  register: db_version
-  changed_when: false
-  tags: [db]
-
-- name: Display MariaDB version
-  debug:
-    var: db_version.query_result
-  tags: [db]
-
-- name: Stop MariaDB service if running
+- name: Stop MariaDB service
   ansible.builtin.service:
     name: mariadb
     state: stopped
@@ -186,102 +64,78 @@
   ignore_errors: yes
   tags: [db]
 
-- name: Ensure MySQL directories have correct permissions
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    owner: mysql
-    group: mysql
-    mode: '0750'
-    recurse: yes
-  with_items:
-    - /var/lib/mysql
-    - /var/run/mysqld
-    - /var/log/mysql
-  tags: [db]
-
-- name: Configure MariaDB
-  ansible.builtin.template:
-    src: mariadb.cnf.j2
-    dest: /etc/mysql/mariadb.conf.d/50-server.cnf
-    owner: root
-    group: root
-    mode: '0644'
+- name: Initialize MariaDB data directory if needed
+  ansible.builtin.command:
+    cmd: mysql_install_db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+    creates: /var/lib/mysql/mysql
+  become: yes
   tags: [db]
 
 - name: Start MariaDB service
-  ansible.builtin.systemd:
+  ansible.builtin.service:
     name: mariadb
-    state: restarted
-    daemon_reload: yes
+    state: started
+    enabled: yes
   tags: [db]
 
-- name: Wait for MariaDB to be ready (socket)
+- name: Wait for MariaDB to be ready
   ansible.builtin.wait_for:
     path: /var/run/mysqld/mysqld.sock
     state: present
     timeout: 60
   tags: [db]
 
-- name: Wait for MariaDB to be listening on network
+- name: Create database
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+  register: db_created
+  tags: [db]
+
+- name: Create .my.cnf file for root
+  ansible.builtin.template:
+    src: my.cnf.j2
+    dest: /root/.my.cnf
+    mode: '0600'
+    owner: root
+    group: root
+  tags: [db]
+
+- name: Create database user
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    host: "%"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+  tags: [db]
+
+- name: Grant privileges to database user
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "*.*:ALL,GRANT"
+    host: "%"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+  tags: [db]
+
+- name: Ensure MariaDB is listening on network
   ansible.builtin.wait_for:
-    host: "0.0.0.0"
+    host: 0.0.0.0
     port: 3306
-    timeout: 60
+    timeout: 30
     state: started
-  register: mysql_network_check
-  tags: [db]
-
-- name: Display network check result
-  ansible.builtin.debug:
-    var: mysql_network_check
-  when: mysql_network_check is defined
   tags: [db]
 
 - name: Verify MariaDB network accessibility
-  ansible.builtin.shell:
-    cmd: "ss -ln | grep :3306"
-  register: mysql_ports
-  changed_when: false
-  ignore_errors: yes  # Add this to prevent task failure if grep finds nothing
-  tags: [db]
-
-- name: Display MySQL ports
-  ansible.builtin.debug:
-    var: mysql_ports
-  tags: [db]
-
-- name: Verify MariaDB network accessibility
-  ansible.builtin.shell: "ss -tuln | grep '.*:3306' || netstat -tuln | grep '.*:3306'"
+  ansible.builtin.shell: "ss -tuln | grep ':3306' || true"
   register: mysql_listening
   changed_when: false
-  ignore_errors: yes
-  tags: [db]
-
-- name: Display MySQL listening status
-  ansible.builtin.debug:
-    msg: "MySQL is listening on {{ mysql_listening.stdout }}"
-  when: mysql_listening.rc == 0
-  tags: [db]
-
-- name: Grant remote access to database user
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-    query: GRANT ALL ON *.* TO 'admin'@'%' IDENTIFIED BY '{{ db_password }}' WITH GRANT OPTION
-
-- name: Flush privileges
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-    query: FLUSH PRIVILEGES
-  tags: [db]
-  notify: restart mariadb
-
-- name: Ensure UFW is installed
-  ansible.builtin.apt:
-    name: ufw
-    state: present
   tags: [db]
 
 - name: Allow MariaDB port in UFW
