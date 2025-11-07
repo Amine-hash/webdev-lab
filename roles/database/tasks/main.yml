@@ -135,9 +135,9 @@
     login_db: "{{ db_name }}"
     query: |
       INSERT INTO Users (FirstName, LastName) VALUES 
-        ('John', 'Doe'),
-        ('Jane', 'Smith'),
-        ('Bob', 'Johnson');
+        ('Amine', 'Merabet'),
+        ('Antoine', 'B'),
+        ('Emmanuel', 'Druon');
   tags: [db]
 
 - name: Configure remote access bind-address using sed
