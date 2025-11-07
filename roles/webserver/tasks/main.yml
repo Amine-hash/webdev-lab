@@ -14,11 +14,11 @@
       - php
       - php-mysql
       - mariadb-client
-      - mysql-client
       - lynx
       - apache2-utils
       - apache2-bin
       - python3-pymysql
+      - libapache2-mod-php
       - python3-pymysql
       - libapache2-mod-php
     state: present
@@ -121,12 +121,21 @@
   tags: [web]
 
 - name: Check database connectivity
+  ansible.builtin.wait_for:
+    host: "{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}"
+    port: "{{ db_port }}"
+    timeout: 30
+    connect_timeout: 5
+  ignore_errors: yes
+  tags: [web]
+
+- name: Verify database connection with query
   community.mysql.mysql_query:
-    login_host: "{{ db_host }}"
+    login_host: "{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}"
     login_user: "{{ db_user }}"
     login_password: "{{ db_password }}"
     login_db: "{{ db_name }}"
-    login_port: "{{ db_port }}"
+    query: SELECT 1
     query: "SELECT 1"
   register: db_check
   ignore_errors: yes

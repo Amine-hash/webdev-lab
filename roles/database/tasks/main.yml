@@ -75,14 +75,16 @@
   ansible.builtin.service:
     name: mariadb
     state: started
-    enabled: yes
+    enabled: true
   tags: [db]
 
-- name: Wait for MariaDB to be ready
-  ansible.builtin.wait_for:
-    path: /var/run/mysqld/mysqld.sock
-    state: present
-    timeout: 60
+- name: Grant remote access to database user
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    query: |
+      CREATE USER IF NOT EXISTS '{{ db_user }}'@'%' IDENTIFIED BY '{{ db_password }}';
+      GRANT ALL PRIVILEGES ON *.* TO '{{ db_user }}'@'%' WITH GRANT OPTION;
+      FLUSH PRIVILEGES;
   tags: [db]
 
 - name: Create database
@@ -90,50 +92,34 @@
     name: "{{ db_name }}"
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-  register: db_created
   tags: [db]
 
-- name: Create .my.cnf file for root
-  ansible.builtin.template:
-    src: my.cnf.j2
-    dest: /root/.my.cnf
-    mode: '0600'
-    owner: root
-    group: root
-  tags: [db]
-
-- name: Create database user
-  community.mysql.mysql_user:
-    name: "{{ db_user }}"
-    password: "{{ db_password }}"
-    host: "%"
-    state: present
+- name: Create Users table
+  community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
+    login_db: "{{ db_name }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS Users (
+        ID INT PRIMARY KEY AUTO_INCREMENT,
+        FirstName VARCHAR(50),
+        LastName VARCHAR(50)
+      );
   tags: [db]
 
-- name: Grant privileges to database user
-  community.mysql.mysql_user:
-    name: "{{ db_user }}"
-    password: "{{ db_password }}"
-    priv: "*.*:ALL,GRANT"
-    host: "%"
-    state: present
+- name: Insert initial data
+  community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-  tags: [db]
-
-- name: Ensure MariaDB is listening on network
-  ansible.builtin.wait_for:
-    host: 0.0.0.0
-    port: 3306
-    timeout: 30
-    state: started
+    login_db: "{{ db_name }}"
+    query: |
+      INSERT IGNORE INTO Users (FirstName, LastName) VALUES 
+        ('John', 'Doe'),
+        ('Jane', 'Smith'),
+        ('Bob', 'Johnson');
   tags: [db]
 
 - name: Verify MariaDB network accessibility
-  ansible.builtin.shell: "ss -tuln | grep ':3306' || true"
+  ansible.builtin.command:
+    cmd: ss -tuln | grep :3306
   register: mysql_listening
   changed_when: false
   tags: [db]
