@@ -103,16 +103,17 @@
     db_sg_id: "{{ db_sg.group_id }}"
   when: infra_state == "present" and db_sg.group_id is defined
 
-- name: Get instances info
+- name: Lookup existing Bastion instance
   amazon.aws.ec2_instance_info:
     region: "{{ aws_region }}"
     filters:
       "tag:Project": "{{ project_tag }}"
+      "tag:Role": "Bastion"
       "instance-state-name": ["pending", "running"]
-  register: existing_instances
+  register: bastion_info
   when: infra_state == "present"
 
-- name: Ensure Bastion instance exists
+- name: Ensure Bastion instance exists (create only if none)
   amazon.aws.ec2_instance:
     name: "{{ project_tag }}-bastion"
     instance_type: "{{ instance_type }}"
@@ -125,18 +126,44 @@
       Name: "{{ project_tag }}-bastion"
       Role: "Bastion"
       Project: "{{ project_tag }}"
-    exact_count: 1
-    filters:
-      "tag:Project": "{{ project_tag }}"
-      "tag:Role": "Bastion"
-    vpc_subnet_id: "{{ web_subnet_id | default(omit) }}"
-    state: "{{ infra_state }}"
+    state: running
     wait: yes
     region: "{{ aws_region }}"
   register: bastion_instance
+  when:
+    - infra_state == "present"
+    - bastion_info.instances | length == 0
+
+- name: Determine Bastion public IP
+  ansible.builtin.set_fact:
+    bastion_public_ip: >-
+      {{ (
+          bastion_instance.instances[0].public_ip_address
+          if (bastion_instance is defined and bastion_instance.instances | length > 0)
+          else bastion_info.instances[0].public_ip_address
+      ) }}
   when: infra_state == "present"
 
-- name: Ensure Web instance exists
+- name: Wait for SSH on Bastion to become available
+  ansible.builtin.wait_for:
+    host: "{{ bastion_public_ip }}"
+    port: 22
+    delay: 10
+    timeout: 320
+    state: started
+  when: infra_state == "present"
+
+- name: Lookup existing Web instance
+  amazon.aws.ec2_instance_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Project": "{{ project_tag }}"
+      "tag:Role": "Web"
+      "instance-state-name": ["pending", "running"]
+  register: web_info
+  when: infra_state == "present"
+
+- name: Ensure Web instance exists (create only if none)
   amazon.aws.ec2_instance:
     name: "{{ project_tag }}-web"
     instance_type: "{{ instance_type }}"
@@ -149,18 +176,25 @@
       Name: "{{ project_tag }}-web"
       Role: "Web"
       Project: "{{ project_tag }}"
-    exact_count: 1
-    filters:
-      "tag:Project": "{{ project_tag }}"
-      "tag:Role": "Web"
-    vpc_subnet_id: "{{ web_subnet_id | default(omit) }}"
-    state: "{{ infra_state }}"
+    state: running
     wait: yes
     region: "{{ aws_region }}"
   register: web_instance
+  when:
+    - infra_state == "present"
+    - web_info.instances | length == 0
+
+- name: Lookup existing DB instance
+  amazon.aws.ec2_instance_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Project": "{{ project_tag }}"
+      "tag:Role": "DB"
+      "instance-state-name": ["pending", "running"]
+  register: db_info
   when: infra_state == "present"
 
-- name: Ensure DB instance exists
+- name: Ensure DB instance exists (create only if none)
   amazon.aws.ec2_instance:
     name: "{{ project_tag }}-db"
     instance_type: "{{ instance_type }}"
@@ -173,26 +207,13 @@
       Name: "{{ project_tag }}-db"
       Role: "DB"
       Project: "{{ project_tag }}"
-    exact_count: 1
-    filters:
-      "tag:Project": "{{ project_tag }}"
-      "tag:Role": "DB"
-    vpc_subnet_id: "{{ db_subnet_id | default(omit) }}"
-    state: "{{ infra_state }}"
+    state: running
     wait: yes
     region: "{{ aws_region }}"
   register: db_instance
-  when: infra_state == "present"
-
-- name: Wait for SSH on bastion to become available
-  ansible.builtin.wait_for:
-    host: "{{ item.public_ip_address }}"
-    port: 22
-    delay: 10
-    timeout: 320
-    state: started
-  loop: "{{ bastion_instance.instances }}"
-  when: infra_state == "present"
+  when:
+    - infra_state == "present"
+    - db_info.instances | length == 0
 
 - name: Ensure .ssh directory exists
   ansible.builtin.file:
