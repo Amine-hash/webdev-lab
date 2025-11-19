@@ -111,6 +111,28 @@ db_password: IG2IUser      # Change this to a secure password
 db_port: 3306              # Change if needed
 ```
 
+4. **Subnet Configuration (IMPORTANT pour la sécurité de la DB)**
+
+Pour garantir que la base de données n'aura **jamais d'IP publique**, il est impératif d'utiliser un **subnet privé** pour la DB :
+
+- Dans `group_vars/all.yml`, renseignez la variable `private_subnet_id` avec l'ID d'un subnet privé de votre VPC :
+  ```yaml
+  private_subnet_id: "subnet-0abc1234def567890"  # Remplacez par l'ID de votre subnet privé
+  ```
+- Un subnet privé est un subnet :
+  - qui n'est pas associé à une Internet Gateway (IGW)
+  - ou qui a l'option "auto-assign public IP" désactivée
+
+**Comment trouver/créer un subnet privé sur AWS ?**
+1. Console AWS > VPC > Subnets
+2. Repérez un subnet sans IGW et sans auto-assign public IP, ou créez-en un nouveau
+3. Copiez son ID (ex: subnet-0abc1234def567890)
+4. Renseignez-le dans `group_vars/all.yml` sous `private_subnet_id`
+
+Si cette variable est vide, la DB sera créée dans le subnet par défaut (souvent public), ce qui n'est pas recommandé !
+
+Pour Bastion/Web, vous pouvez utiliser un subnet public (variable `public_subnet_id` si besoin).
+
 ### Instance Naming
 
 Security groups and instances are automatically named using this pattern:
