@@ -230,6 +230,14 @@
     - infra_state == "present"
     - db_info.instances | length == 0
 
+- name: Debug subnet utilisé pour la DB
+  debug:
+    msg: |
+      Utilisation du subnet pour la DB :
+        private_subnet_id = {{ private_subnet_id }}
+        private_subnet_auto_managed = {{ private_subnet_auto_managed | default(false) }}
+  when: infra_state == "present"
+
 - name: Assert DB has no public IP
   amazon.aws.ec2_instance_info:
     region: "{{ aws_region }}"
