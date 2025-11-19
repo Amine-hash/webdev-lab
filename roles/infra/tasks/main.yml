@@ -208,6 +208,18 @@
   register: db_info
   when: infra_state == "present"
 
+- name: Fail if db_info.instances is not defined before DB creation
+  ansible.builtin.fail:
+    msg: "db_info.instances n'est pas défini : la récupération des instances DB a échoué. Vérifiez les logs précédents."
+  when:
+    - infra_state == "present"
+    - db_info.instances is not defined
+
+- name: Debug db_info avant création DB
+  debug:
+    var: db_info
+  when: infra_state == "present"
+
 - name: Ensure DB instance exists (create only if none)
   amazon.aws.ec2_instance:
     name: "{{ project_tag }}-db"
