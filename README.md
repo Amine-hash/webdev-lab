@@ -111,6 +111,41 @@ db_password: IG2IUser      # Change this to a secure password
 db_port: 3306              # Change if needed
 ```
 
+4. **Subnet Configuration (IMPORTANT pour la sécurité de la DB)**
+
+Pour garantir que la base de données n'aura **jamais d'IP publique**, il est impératif d'utiliser un **subnet privé** pour la DB :
+
+- Dans `group_vars/all.yml`, renseignez la variable `private_subnet_id` avec l'ID d'un subnet privé de votre VPC :
+  ```yaml
+  private_subnet_id: "subnet-0abc1234def567890"  # Remplacez par l'ID de votre subnet privé
+  ```
+- Un subnet privé est un subnet :
+  - qui n'est pas associé à une Internet Gateway (IGW)
+  - ou qui a l'option "auto-assign public IP" désactivée
+
+**Comment trouver/créer un subnet privé sur AWS ?**
+1. Console AWS > VPC > Subnets
+2. Repérez un subnet sans IGW et sans auto-assign public IP, ou créez-en un nouveau
+3. Copiez son ID (ex: subnet-0abc1234def567890)
+4. Renseignez-le dans `group_vars/all.yml` sous `private_subnet_id`
+
+Si cette variable est vide, la DB sera créée dans le subnet par défaut (souvent public), ce qui n'est pas recommandé !
+
+Pour Bastion/Web, vous pouvez utiliser un subnet public (variable `public_subnet_id` si besoin).
+
+## Subnet privé pour la base de données (automatisé)
+
+- Le playbook crée automatiquement un subnet privé (172.31.240.0/20) dans le VPC vpc-03ab4238efb2cc320 si vous ne définissez pas la variable `private_subnet_id` dans `group_vars/all.yml`.
+- Ce subnet est tagué `Name=webdev-db-private-subnet` et `Project={{ project_tag }}`.
+- Il est supprimé automatiquement lors du destroy (après suppression des instances et SG).
+- Si vous souhaitez utiliser un autre subnet privé, définissez simplement `private_subnet_id` dans `group_vars/all.yml` (le playbook n'en créera pas d'autre).
+- Le CIDR 172.31.240.0/20 est choisi pour éviter tout chevauchement avec les subnets standards AWS du VPC par défaut.
+- L'auto-assign public IP est désactivé sur ce subnet.
+
+**Résumé** :
+- Pour un lab auto-suffisant, ne touchez à rien, le playbook gère tout.
+- Pour un usage avancé, fixez `private_subnet_id` à l'ID de votre choix.
+
 ### Instance Naming
 
 Security groups and instances are automatically named using this pattern:
