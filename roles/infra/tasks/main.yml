@@ -228,6 +228,7 @@
   register: db_instance
   when:
     - infra_state == "present"
+    - db_info.instances is defined
     - db_info.instances | length == 0
 
 - name: Debug subnet utilisé pour la DB
