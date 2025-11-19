@@ -391,7 +391,7 @@
     - infra_state == "present"
     - private_subnet_id is not defined or private_subnet_id == ""
 
-- name: Debug private_subnet_id avant création DB
+- name: Debug private_subnet_id juste avant création DB
   debug:
     var: private_subnet_id
   when: infra_state == "present"
