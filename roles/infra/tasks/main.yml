@@ -78,8 +78,8 @@
         group_id: "{{ bastion_sg_id }}"
         rule_desc: "Allow SSH from Bastion"
       - proto: tcp
-        from_port: "{{ db_port }}"
-        to_port: "{{ db_port }}"
+        from_port: {{ db_port | int }}
+        to_port: {{ db_port | int }}
         group_id: "{{ web_sg.group_id }}"
         rule_desc: "Allow DB access from Web servers"
     rules_egress:
@@ -323,3 +323,51 @@
   retries: 6
   delay: 10
   when: infra_state == "absent"
+
+- name: Lookup existing private subnet for DB (by tag)
+  amazon.aws.ec2_vpc_subnet_info:
+    filters:
+      vpc-id: vpc-03ab4238efb2cc320
+      tag:Project: "{{ project_tag }}"
+      tag:Name: "webdev-db-private-subnet"
+      cidr-block: "172.31.240.0/20"
+  register: found_private_subnet
+  when:
+    - infra_state == "present"
+    - (private_subnet_id is not defined or private_subnet_id == "")
+
+- name: Create private subnet for DB if not found
+  amazon.aws.ec2_vpc_subnet:
+    vpc_id: "vpc-03ab4238efb2cc320"
+    cidr: "172.31.240.0/20"
+    map_public: false
+    state: present
+    tags:
+      Name: "webdev-db-private-subnet"
+      Project: "{{ project_tag }}"
+  register: created_private_subnet
+  when:
+    - infra_state == "present"
+    - (private_subnet_id is not defined or private_subnet_id == "")
+    - (found_private_subnet.subnets is not defined or found_private_subnet.subnets | length == 0)
+
+- name: Set private_subnet_id fact (auto-managed)
+  ansible.builtin.set_fact:
+    private_subnet_id: >-
+      {{
+        (found_private_subnet.subnets[0].id if found_private_subnet.subnets is defined and found_private_subnet.subnets | length > 0 else created_private_subnet.subnet.id)
+      }}
+    private_subnet_auto_managed: true
+  when:
+    - infra_state == "present"
+    - (private_subnet_id is not defined or private_subnet_id == "")
+    - ((found_private_subnet.subnets is defined and found_private_subnet.subnets | length > 0) or (created_private_subnet.subnet is defined))
+
+- name: Delete auto-managed private subnet (after all resources)
+  amazon.aws.ec2_vpc_subnet:
+    vpc_id: "vpc-03ab4238efb2cc320"
+    cidr: "172.31.240.0/20"
+    state: absent
+  when:
+    - infra_state == "absent"
+    - private_subnet_auto_managed | default(false)

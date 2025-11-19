@@ -133,6 +133,19 @@ Si cette variable est vide, la DB sera créée dans le subnet par défaut (souve
 
 Pour Bastion/Web, vous pouvez utiliser un subnet public (variable `public_subnet_id` si besoin).
 
+## Subnet privé pour la base de données (automatisé)
+
+- Le playbook crée automatiquement un subnet privé (172.31.240.0/20) dans le VPC vpc-03ab4238efb2cc320 si vous ne définissez pas la variable `private_subnet_id` dans `group_vars/all.yml`.
+- Ce subnet est tagué `Name=webdev-db-private-subnet` et `Project={{ project_tag }}`.
+- Il est supprimé automatiquement lors du destroy (après suppression des instances et SG).
+- Si vous souhaitez utiliser un autre subnet privé, définissez simplement `private_subnet_id` dans `group_vars/all.yml` (le playbook n'en créera pas d'autre).
+- Le CIDR 172.31.240.0/20 est choisi pour éviter tout chevauchement avec les subnets standards AWS du VPC par défaut.
+- L'auto-assign public IP est désactivé sur ce subnet.
+
+**Résumé** :
+- Pour un lab auto-suffisant, ne touchez à rien, le playbook gère tout.
+- Pour un usage avancé, fixez `private_subnet_id` à l'ID de votre choix.
+
 ### Instance Naming
 
 Security groups and instances are automatically named using this pattern:

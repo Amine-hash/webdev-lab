@@ -35,3 +35,4 @@ db_port: 3306
 db_host: "{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}"
 
 private_subnet_id: ""
+
