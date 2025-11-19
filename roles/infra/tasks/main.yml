@@ -372,6 +372,18 @@
     - (private_subnet_id is not defined or private_subnet_id == "")
     - ((found_private_subnet.subnets is defined and found_private_subnet.subnets | length > 0) or (created_private_subnet.subnet is defined))
 
+- name: Fail if private_subnet_id is not defined before DB creation
+  ansible.builtin.fail:
+    msg: "private_subnet_id n'est pas défini ou est vide : la création du subnet privé a échoué ou n'a pas eu lieu. Vérifiez les logs précédents."
+  when:
+    - infra_state == "present"
+    - private_subnet_id is not defined or private_subnet_id == ""
+
+- name: Debug private_subnet_id avant création DB
+  debug:
+    var: private_subnet_id
+  when: infra_state == "present"
+
 - name: Delete auto-managed private subnet (after all resources)
   amazon.aws.ec2_vpc_subnet:
     vpc_id: "vpc-03ab4238efb2cc320"
