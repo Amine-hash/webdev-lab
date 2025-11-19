@@ -78,8 +78,8 @@
         group_id: "{{ bastion_sg_id }}"
         rule_desc: "Allow SSH from Bastion"
       - proto: tcp
-        from_port: {{ db_port | int }}
-        to_port: {{ db_port | int }}
+        from_port: "{{ db_port | int }}"
+        to_port: "{{ db_port | int }}"
         group_id: "{{ web_sg.group_id }}"
         rule_desc: "Allow DB access from Web servers"
     rules_egress:
