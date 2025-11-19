@@ -33,3 +33,4 @@ db_user: admin
 db_password: IG2IUser
 db_port: 3306
 db_host: "{{ hostvars[groups['tag_Role_DB'][0]].private_ip_address }}"
+

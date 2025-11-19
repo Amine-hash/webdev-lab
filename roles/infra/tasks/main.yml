@@ -5,7 +5,8 @@
     region: "{{ aws_region }}"
     vpc_id: "{{ vpc_id | default(omit) }}"
     state: "{{ infra_state }}"
-    purge_rules: no
+    purge_rules: true
+    purge_rules_egress: true
     rules:
       - proto: tcp
         from_port: 22
@@ -34,7 +35,8 @@
     region: "{{ aws_region }}"
     vpc_id: "{{ vpc_id | default(omit) }}"
     state: "{{ infra_state }}"
-    purge_rules: no
+    purge_rules: true
+    purge_rules_egress: true
     rules:
       - proto: tcp
         from_port: 80
@@ -67,7 +69,8 @@
     region: "{{ aws_region }}"
     vpc_id: "{{ vpc_id | default(omit) }}"
     state: "{{ infra_state }}"
-    purge_rules: no
+    purge_rules: true
+    purge_rules_egress: true
     rules:
       - proto: tcp
         from_port: 22
@@ -112,6 +115,7 @@
     security_group: "{{ bastion_sg_name }}"
     network:
       assign_public_ip: true
+      subnet_id: "{{ public_subnet_id | default(omit) }}"
     tags:
       Name: "{{ project_tag }}-bastion"
       Role: "Bastion"
@@ -181,6 +185,7 @@
     security_group: "{{ web_sg_name }}"
     network:
       assign_public_ip: true
+      subnet_id: "{{ public_subnet_id | default(omit) }}"
     tags:
       Name: "{{ project_tag }}-web"
       Role: "Web"
@@ -212,6 +217,7 @@
     security_group: "{{ db_sg_name }}"
     network:
       assign_public_ip: false
+      subnet_id: "{{ private_subnet_id | default(omit) }}"
     tags:
       Name: "{{ project_tag }}-db"
       Role: "DB"
@@ -223,6 +229,24 @@
   when:
     - infra_state == "present"
     - db_info.instances | length == 0
+
+- name: Assert DB has no public IP
+  amazon.aws.ec2_instance_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Project": "{{ project_tag }}"
+      "tag:Role": "DB"
+      "instance-state-name": ["running","pending"]
+  register: db_check
+  when: infra_state == "present"
+
+- name: Fail if DB has a public IP
+  ansible.builtin.assert:
+    that:
+      - db_check.instances | length > 0
+      - (db_check.instances[0].public_ip_address | default('')) == ''
+    fail_msg: "La DB possède une IP publique: corrige subnet/assign_public_ip."
+  when: infra_state == "present"
 
 - name: Ensure .ssh directory exists
   ansible.builtin.file:
