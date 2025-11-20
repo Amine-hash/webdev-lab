@@ -102,7 +102,7 @@
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_db: "{{ db_name }}"
     query: "CREATE UNIQUE INDEX uniq_user ON Users(FirstName, LastName);"
-  when: uniq_idx.query_result[0].rowcount | int == 0
+  when: (uniq_idx.query_result[0].rows | default([]) | length) == 0
   tags: [db]
 
 - name: Seed initial users without duplicates
@@ -115,7 +115,7 @@
         ('Antoine','B'),
         ('Emmanuel','Druon');
   register: seed_res
-  changed_when: seed_res.query_result[0].affected_rows | int > 0
+  changed_when: (seed_res.query_result[0].affected_rows | int) > 0
   tags: [db]
 
 - name: Deploy my.cnf for mysql client
