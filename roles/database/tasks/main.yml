@@ -115,7 +115,7 @@
         ('Antoine','B'),
         ('Emmanuel','Druon');
   register: seed_res
-  changed_when: (seed_res.query_result[0].affected_rows | int) > 0
+  changed_when: (seed_res.rowcount | default([]) | sum) > 0
   tags: [db]
 
 - name: Deploy my.cnf for mysql client
