@@ -58,32 +58,14 @@
     timeout: 60
   tags: [db]
 
-- name: Create database user
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    query: "CREATE USER IF NOT EXISTS '{{ db_user }}'@'%' IDENTIFIED BY '{{ db_password }}';"
-  tags: [db]
-
-- name: Grant privileges to database user
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    query: "GRANT ALL ON *.* TO '{{ db_user }}'@'%' WITH GRANT OPTION;"
-  tags: [db]
-
-- name: Flush privileges
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    query: FLUSH PRIVILEGES;
-  tags: [db]
-
-- name: Create database
+- name: Ensure database exists
   community.mysql.mysql_db:
     name: "{{ db_name }}"
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
   tags: [db]
 
-- name: Create Users table
+- name: Ensure Users table exists
   community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_db: "{{ db_name }}"
@@ -93,24 +75,47 @@
         FirstName VARCHAR(50),
         LastName VARCHAR(50)
       );
+  changed_when: false
   tags: [db]
 
-- name: Clean Users table before inserting initial data
+- name: Ensure DB user exists with privileges
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    host: "%"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL,GRANT"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  tags: [db]
+
+- name: Check if unique index exists on Users(FirstName, LastName)
   community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_db: "{{ db_name }}"
-    query: "DELETE FROM Users;"
+    query: "SHOW INDEX FROM Users WHERE Key_name = 'uniq_user';"
+  register: uniq_idx
+  changed_when: false
   tags: [db]
 
-- name: Insert initial data
+- name: Create unique index if missing
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_db: "{{ db_name }}"
+    query: "CREATE UNIQUE INDEX uniq_user ON Users(FirstName, LastName);"
+  when: uniq_idx.query_result[0].rowcount | int == 0
+  tags: [db]
+
+- name: Seed initial users without duplicates
   community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_db: "{{ db_name }}"
     query: |
-      INSERT INTO Users (FirstName, LastName) VALUES 
-        ('Amine', 'Merabet'),
-        ('Antoine', 'B'),
-        ('Emmanuel', 'Druon');
+      INSERT IGNORE INTO Users (FirstName, LastName) VALUES
+        ('Amine','Merabet'),
+        ('Antoine','B'),
+        ('Emmanuel','Druon');
+  register: seed_res
+  changed_when: seed_res.query_result[0].affected_rows | int > 0
   tags: [db]
 
 - name: Deploy my.cnf for mysql client
